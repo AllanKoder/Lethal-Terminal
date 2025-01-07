@@ -1,4 +1,4 @@
-from Lethal.StateManager import StateManager
+from Lethal.state_manager import StateManager
 import keyboard
 
 if __name__ == "__main__":

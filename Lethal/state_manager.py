@@ -1,6 +1,7 @@
 from enum import Enum
+from typing import List
+from collections import deque
 import keyboard
-
 
 #class State(Enum):
     #GAMEPLAY = 0
@@ -13,10 +14,21 @@ import keyboard
 
 class StateManager:
     def __init__(self):
-        self.buffer = [] # will be flushed with 'enter'
+        self.buffer = deque([]) # will be flushed with 'enter'
 
         self.set_state_to_gameplay()
     
+    def is_typed(self, array: List[str]):
+        if len(self.buffer) < len(array): 
+            return False
+        
+        # Check last n elements directly from deque
+        for i in range(len(array)):
+            if self.buffer[-(i + 1)] != array[-(i + 1)]:
+                return False
+        
+        return True
+
     def listen_to_keyboard(self, callback, suppress=True):
         def add_to_buffer(key):
             print(key.name)
@@ -25,10 +37,13 @@ class StateManager:
 
             callback()
 
-            # No need for more than 50 characters in reality
-            if key.name == 'enter' or len(self.buffer) > 50:
+            # Flush on enter
+            if key.name == 'enter':
                 self.buffer.clear()
 
+            if len(self.buffer) > 50:
+                self.buffer.popleft()
+            # No need for more than 50 characters in reality
 
         keyboard.on_press(add_to_buffer, suppress=suppress)
 
@@ -38,7 +53,7 @@ class StateManager:
 
         def handle_transitions():
             # Enter Terminal State
-            if len(self.buffer) >= 2 and self.buffer[-2:] == ['t', 'enter']:
+            if self.is_typed(['t', 'enter']):
                 self.set_state_to_terminal()
 
         self.listen_to_keyboard(handle_transitions, False)
@@ -50,7 +65,7 @@ class StateManager:
 
         def handle_transitions():
             # Enter Gameplay State
-            if len(self.buffer) >= 2 and self.buffer[-2:] == ['tab', 'tab']:
+            if self.is_typed(['tab', 'tab']):
                 self.set_state_to_gameplay()
 
         self.listen_to_keyboard(handle_transitions, True)
