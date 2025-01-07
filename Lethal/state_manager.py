@@ -185,6 +185,11 @@ class StateManager:
         self.listen_to_keyboard()
 
     def handle_insert_text_keyboard(self):
+        # TODO: Make handling control c a decorator
+        if self.is_typed(['ctrl', 'c']):
+            self.terminal_state()
+            return
+
         # Get the latest key event from the buffer
         event = self.buffer[-1]
 
@@ -201,11 +206,11 @@ class StateManager:
         
         else:
             if event == 'enter':
-                self.writing_queue.appendleft(("user", self.to_be_written))
+                # Send the copy to be typed
+                self.writing_queue.appendleft(("user", deque(self.to_be_written)))
+                self.to_be_written.clear()
 
-        print("TO BE WRRITEN", self.to_be_written)
-        # Handle control + C for buffer wipe
-        self.handle_control_c()
+        
 
 
     def automatic_trap_writing(self, is_auto_typing_traps, writing_queue):
