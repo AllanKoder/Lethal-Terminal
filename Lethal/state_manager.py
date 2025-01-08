@@ -19,9 +19,10 @@ class State(Enum):
 class StateManager:
     def __init__(self):
         self.buffer = deque([]) # will be flushed with 'enter'
-        self.to_be_written = [] # What the user is about to write
+        self.to_be_written = deque([]) # What the user is about to write
+        self.unfinished_writing_in_terminal = deque([]) # What the user didn't finish while the automation was happening
         self.writing_queue = deque([])
-        self.traps = set() # List of traps
+        self.traps = set([ a + str(n) for a in 'abcdefghi' for n in range(0,10)]) # List of traps
 
         self.suppress = False # Suppress the keyboard
         self.is_auto_typing_traps = [False] # Is the computer typing the traps right now?
@@ -53,7 +54,7 @@ class StateManager:
             case State.INSERT_TEXT:
                 self.handle_insert_text_keyboard()
             
-        if self.is_typed(['A', 'A']):
+        if self.is_typed(['q', 'q']):
             t1 = threading.Thread(target=self.automatic_trap_writing, args=(self.is_auto_typing_traps, self.writing_queue))
             t1.start()
 
@@ -190,33 +191,34 @@ class StateManager:
             self.terminal_state()
             return
 
-        # Get the latest key event from the buffer
         event = self.buffer[-1]
 
         # Add the latest event to the to_be_written list
-        self.to_be_written.append(event)  # Use append since we're adding a single item
+        self.to_be_written.append(event)
 
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps[0]:
-            # Type the current event immediately
             keyboard.press_and_release(event)
-            # Clear the buffer if 'enter' is pressed
+
+            # Clear the buffer since it is a newline
             if event == 'enter':
                 self.to_be_written.clear()
         
+        # System is typing traps
         else:
+            self.unfinished_writing_in_terminal.append(event)
             if event == 'enter':
-                # Send the copy to be typed
+                # Send the line that was desired to be typed to the writing queue
                 self.writing_queue.appendleft(("user", deque(self.to_be_written)))
                 self.to_be_written.clear()
-
-        
+                self.unfinished_writing_in_terminal.clear()
 
 
     def automatic_trap_writing(self, is_auto_typing_traps, writing_queue):
         print("STARTED WRITING")
         is_auto_typing_traps[0] = True
-        writing_queue.extend(deque([("bot","this is a test\n")] * 40))  # Pre-fill with lines
+        for trap in self.traps:
+            writing_queue.extend(deque([("bot",f"{trap}\n\n")]))  # Pre-fill with lines
         
         while len(writing_queue) > 0:
             DELAY = 0.016
@@ -230,9 +232,15 @@ class StateManager:
                         keyboard.press(key)
                         sleep(DELAY)
                         keyboard.release(key)
+                    keyboard.write("\n")
        
             waiting = (len(write)+1) * DELAY
             sleep(waiting)
         
         is_auto_typing_traps[0] = False
+
+        # Finish off buffer that is not done from the terminal
+        while len(self.unfinished_writing_in_terminal) > 0:
+            keyboard.press_and_release(self.unfinished_writing_in_terminal.popleft())
+
         print("ENDING WRITING")
