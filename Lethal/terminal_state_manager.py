@@ -16,15 +16,22 @@ class State(Enum):
     SWITCH_PLAYER = 5
     ALL_TRAPS = 6
 
-class StateManager:
+class TerminalStateManager:
     def __init__(self):
+        # What the keyboard shows
         self.buffer = deque([]) # will be flushed with 'enter'
+        
+        # What the user is typing as the automatic typing is occuring, and will be typed when flushed
         self.to_be_written = deque([]) # What the user is about to write
+        # What the user was typing as automatic typing was occuring and ended, so needs to be finished
         self.unfinished_writing_in_terminal = deque([]) # What the user didn't finish while the automation was happening
+
+        # The things are to be typed and is handled in a queue
         self.writing_queue = deque([])
+
+        # The traps
         self.traps = set([ a + str(n) for a in 'abcdefghi' for n in range(0,10)]) # List of traps
 
-        self.suppress = False # Suppress the keyboard
         self.is_auto_typing_traps = [False] # Is the computer typing the traps right now?
         self.state = None
         self.gameplay_state()
@@ -74,10 +81,8 @@ class StateManager:
         if len(self.buffer) > 50:
             self.buffer.popleft()
 
-    def listen_to_keyboard(self):
+    def listen_to_keyboard(self, suppress):
         # If is auto typing, suppress the user input
-        suppress = self.suppress or self.is_auto_typing_traps[0]
-
         keyboard.on_press(self.handle_key_buffer, suppress=suppress)
     
     # Reduce repeated code for keyboard setup
@@ -96,8 +101,7 @@ class StateManager:
     def gameplay_state(self):
         print("gaming state")
         self.state = State.GAMEPLAY
-        self.suppress = False
-        self.listen_to_keyboard()
+        self.listen_to_keyboard(False)
     def handle_gameplay_keyboard(self):
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
@@ -108,8 +112,7 @@ class StateManager:
     def terminal_state(self):
         print("terminal state")
         self.state = State.TERMINAL
-        self.suppress = True
-        self.listen_to_keyboard()
+        self.listen_to_keyboard(True)
     def handle_terminal_keyboard(self):
         # Enter Gameplay State
         if self.is_typed(['tab', 'tab']):
@@ -132,8 +135,7 @@ class StateManager:
     def add_trap_state(self):
         print("add trap state")
         self.state = State.ADD_TRAP
-        self.suppress = True
-        self.listen_to_keyboard()
+        self.listen_to_keyboard(True)
 
     def handle_adding_trap_keyboard(self):
         if (len(self.buffer) >= 3 and self.buffer[-1] == 'enter'):
@@ -142,6 +144,9 @@ class StateManager:
             if is_valid_trap(trap):
                 self.traps.add(trap)
 
+                # Return to Terminal State
+                self.terminal_state()
+
         self.handle_control_c()
 
 
@@ -149,8 +154,7 @@ class StateManager:
     def remove_trap_state(self):
         print("remove trap state")
         self.state = State.DELETE_TRAP
-        self.suppress = True
-        self.listen_to_keyboard()
+        self.listen_to_keyboard(True)
 
     def handle_delete_trap_keyboard(self):
         if (len(self.buffer) >= 3 and self.buffer[-1] == 'enter'):
@@ -159,6 +163,9 @@ class StateManager:
             if is_valid_trap(trap) and trap in self.traps:
                 self.traps.remove(trap)
 
+                # Return to Terminal State
+                self.terminal_state()
+
         self.handle_control_c()
 
 
@@ -166,8 +173,7 @@ class StateManager:
     def insert_text_state(self):
         print("insert text state")
         self.state = State.INSERT_TEXT
-        self.suppress = True
-        self.listen_to_keyboard()
+        self.listen_to_keyboard(True)
 
     def handle_insert_text_keyboard(self):
         # TODO: Make handling control c a decorator
@@ -202,7 +208,7 @@ class StateManager:
         print("STARTED WRITING")
         is_auto_typing_traps[0] = True
         for trap in self.traps:
-            writing_queue.extend(deque([("bot",f"{trap}\n\n")]))  # Pre-fill with lines
+            writing_queue.extend(deque([("bot",f"{trap}\n\n")]))  # two \n\n in case one is missed
         
         while len(writing_queue) > 0:
             DELAY = 0.016
@@ -216,6 +222,7 @@ class StateManager:
                         keyboard.press(key)
                         sleep(DELAY)
                         keyboard.release(key)
+                    # add an extra \n in case it was missed
                     keyboard.write("\n")
        
             waiting = (len(write)+1) * DELAY

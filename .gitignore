@@ -13,4 +13,4 @@ tester.txt
 # Build (pyinstaller)
 build/
 dist/
-main.spec
+run.spec
