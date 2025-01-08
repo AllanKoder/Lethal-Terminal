@@ -1,11 +1,16 @@
 # Venv
 pyvenv.cfg
-Scripts
-Lib
-Include
+Scripts/
+Lib/
+Include/
 
 # Cache
 __pycache__
 
 # Testing
 tester.txt
+
+# Build (pyinstaller)
+build/
+dist/
+main.spec
