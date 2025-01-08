@@ -5,6 +5,7 @@ from time import sleep
 import keyboard
 import threading
 
+from .traps import is_valid_trap
 
 class State(Enum):
     GAMEPLAY = 0
@@ -14,7 +15,6 @@ class State(Enum):
     INSERT_TEXT = 4
     SWITCH_PLAYER = 5
     ALL_TRAPS = 6
-    AUTOMATIC_TRAPS = 7
 
 class StateManager:
     def __init__(self):
@@ -80,10 +80,10 @@ class StateManager:
 
         keyboard.on_press(self.handle_key_buffer, suppress=suppress)
     
+    # Reduce repeated code for keyboard setup
     def keyboard_setup(func):
         def decorator(self):
             keyboard.unhook_all()
-        
             func(self)
         return decorator
 
@@ -98,7 +98,6 @@ class StateManager:
         self.state = State.GAMEPLAY
         self.suppress = False
         self.listen_to_keyboard()
-
     def handle_gameplay_keyboard(self):
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
@@ -111,7 +110,6 @@ class StateManager:
         self.state = State.TERMINAL
         self.suppress = True
         self.listen_to_keyboard()
-
     def handle_terminal_keyboard(self):
         # Enter Gameplay State
         if self.is_typed(['tab', 'tab']):
@@ -130,19 +128,6 @@ class StateManager:
         self.handle_control_c()
 
 
-    def is_valid_trap(self, trap: str):
-        if len(trap) != 2:
-            print(" bad len")
-            return False
-        if not trap[0].isalpha():
-            print("not letter", trap[0])
-            return False
-        if not trap[1].isdigit():
-            print ("not numb")
-            return False
-        return True
-
-
     @keyboard_setup
     def add_trap_state(self):
         print("add trap state")
@@ -154,11 +139,10 @@ class StateManager:
         if (len(self.buffer) >= 3 and self.buffer[-1] == 'enter'):
             trap = (self.buffer[-3] + self.buffer[-2])
             print("adding", trap)
-            if self.is_valid_trap(trap):
+            if is_valid_trap(trap):
                 self.traps.add(trap)
 
         self.handle_control_c()
-
 
 
     @keyboard_setup
@@ -172,7 +156,7 @@ class StateManager:
         if (len(self.buffer) >= 3 and self.buffer[-1] == 'enter'):
             trap = (self.buffer[-3] + self.buffer[-2])
             print("removing", trap)
-            if self.is_valid_trap(trap) and trap in self.traps:
+            if is_valid_trap(trap) and trap in self.traps:
                 self.traps.remove(trap)
 
         self.handle_control_c()
