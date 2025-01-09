@@ -266,15 +266,17 @@ class TerminalStateManager:
         ideal_timer = 5
         while self.running_auto_trap_thread:
             if self.state is not State.GAMEPLAY:
-                sleep(1)
+                pause_from_starting = 0.5
+                sleep(pause_from_starting) # sleep here to not immediately type and ruin the input of 'view monitor'
                 starting_time = time()
-                thread = threading.Thread(target=self.start_automatic_trap_writing)
-                thread.start()
-                thread.join()
+                if len(self.traps) > 0:
+                    thread = threading.Thread(target=self.start_automatic_trap_writing)
+                    thread.start()
+                    thread.join()
                 ending_time = time()
 
                 time_already_used = ending_time - starting_time
-                time_to_wait = ideal_timer - time_already_used - 1
+                time_to_wait = ideal_timer - time_already_used - pause_from_starting
                 if time_to_wait > 0:
                     sleep(time_to_wait)
             else:
