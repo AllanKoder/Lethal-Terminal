@@ -6,8 +6,35 @@ import keyboard
 import threading
 
 from .traps import is_valid_trap
-DELAY = 0.016
+INPUT_DELAY = 0.02
 
+class KeyboardManager:
+    def __init__(self):
+        self.queue = deque()
+        self.lock = threading.Lock()
+        self.thread = threading.Thread(target=self.process_keys)
+        self.thread.start()
+
+    def process_keys(self):
+        while self.running:
+            with self.lock:
+                if len(self.queue) > 0:
+                    key = self.queue.popleft()
+                else:
+                    key = None
+
+            if key is not None:
+                keyboard.press(key)
+                sleep(INPUT_DELAY)
+                keyboard.release(key)
+            else:
+                sleep(0.01)  # Sleep briefly to stop overloading the system
+
+    def press_key(self, key):
+        with self.lock:
+            self.queue.append(key)
+
+        
 class State(Enum):
     GAMEPLAY = 0
     TERMINAL = 1
@@ -25,16 +52,17 @@ class TerminalStateManager:
         # What the user was typing as automatic typing was occuring and ended, so needs to be finished
         self.unfinished_writing_in_terminal = deque([]) # What the user didn't finish while the automation was happening
 
+        self.keyboard_manager = KeyboardManager()
         # The things are to be typed and is handled in a queue
         self.writing_queue = deque([])
 
-        # The traps
+        # The traps (e.g. mines, turrets)
         self.traps = set([ a + str(n) for a in 'abcdefghi' for n in range(0,10)]) # List of traps
 
         self.is_auto_typing_traps = False # Is the computer typing the traps right now?
 
         # First Terminal Enter
-        self.first_enter = True # Makes you type view monitor on the first go
+        self.first_terminal_enter = True # Makes you type view monitor on the first go
 
         # The current state
         self.state = None
@@ -66,8 +94,8 @@ class TerminalStateManager:
                 self.handle_insert_text_keyboard()
             
         if self.is_typed(['q', 'q']):
-            t1 = threading.Thread(target=self.automatic_trap_writing)
-            t1.start()
+            if not self.is_auto_typing_traps:
+                threading.Thread(target=self.automatic_trap_writing).start()
 
     def handle_key_buffer(self, key: str):
         print(key.name)
@@ -105,18 +133,22 @@ class TerminalStateManager:
     def gameplay_state(self):
         print("gaming state")
         self.state = State.GAMEPLAY
+        self.first_terminal_enter = True
         self.listen_to_keyboard(False)
     def handle_gameplay_keyboard(self):
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
             self.terminal_state()
 
-
     @keyboard_setup
     def terminal_state(self):
         print("terminal state")
         self.state = State.TERMINAL
         self.listen_to_keyboard(True)
+
+        if self.first_terminal_enter:
+            self.first_terminal_enter = False
+            self.insert_view_monitor_text()
     def handle_terminal_keyboard(self):
         # Enter Gameplay State
         if self.is_typed(['tab', 'tab']):
@@ -130,10 +162,10 @@ class TerminalStateManager:
         # Enter Text Insertion state
         elif self.is_typed(['i']):
             self.insert_text_state()
-        # Enter switch
+        # Enter switch player
         elif self.is_typed(['s']):
             self.insert_switch_player_text()
-        # Enter view monitor
+        # Enter view monitor text
         elif self.is_typed(['m']):
             self.insert_view_monitor_text()
         
@@ -178,17 +210,19 @@ class TerminalStateManager:
 
         self.handle_control_c()
 
-    def insert_text_to_be_written(self, key_event):
+    def insert_event_to_be_written(self, key_event: str):
         # Add the latest event to the to_be_written list
         self.to_be_written.append(key_event)
-
+        print("TO BE WRITTEN", self.to_be_written)
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
-            keyboard.press_and_release(key_event)
+            # handle the inputs given
+            self.keyboard_manager.press_key(key_event)
 
             # Clear the buffer since it is a newline
             if key_event == 'enter':
                 self.to_be_written.clear()
+            
         
         # System is typing traps
         else:
@@ -211,37 +245,38 @@ class TerminalStateManager:
             return
 
         event = self.buffer[-1]
-        self.insert_text_to_be_written(event)
+        self.insert_event_to_be_written(event)
 
     def insert_switch_player_text(self):
-        for k in ['s','w','i','t','c','h','enter', 'enter']:
-            self.insert_text_to_be_written(k)
+        for k in ['enter', 'enter', 's','w','i','t','c','h','enter']:
+            self.insert_event_to_be_written(k)
     
     def insert_view_monitor_text(self):
-        for k in ['v','i','e','w',' ','m','o','n','i','t','o','r','enter', 'enter']:
-            self.insert_text_to_be_written(k)
+        for k in ['enter', 'enter', 'v','i','e','w','space','m','o','n','i','t','o','r','enter']:
+            # This command takes more time, needs more waiting
+            self.insert_event_to_be_written(k)
 
     def automatic_trap_writing(self):
         print("STARTED WRITING")
         self.is_auto_typing_traps = True
         for trap in self.traps:
-            self.writing_queue.extend(deque([("bot",f"{trap}\n\n")]))  # two \n\n in case one is missed
+            self.writing_queue.extend(deque([("bot",f"\n{trap}\n")]))  # two \n\n in case one is missed
         
         while len(self.writing_queue) > 0:
             type, write = self.writing_queue.popleft()
 
             match type:
                 case "bot":
-                    keyboard.write(write, delay=DELAY)
+                    keyboard.write(write, delay=INPUT_DELAY)
                 case "user":
+                    keyboard.write("\n")
+                    keyboard.write("\n")
                     for key in write:
-                        keyboard.press(key)
-                        sleep(DELAY)
-                        keyboard.release(key)
+                        self.keyboard_manager.press_key(key)
                     # add an extra \n in case it was missed
                     keyboard.write("\n")
        
-            waiting = (len(write)+1) * DELAY
+            waiting = (len(write)+1) * INPUT_DELAY
             sleep(waiting)
         
         self.is_auto_typing_traps = False
