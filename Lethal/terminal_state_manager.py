@@ -30,6 +30,7 @@ class TerminalStateManager:
         # Flags
         self.first_terminal_enter = True # Makes you type view monitor on the first go
         self.running_auto_trap_thread = True
+        self.want_all_traps = False # Will type all combinations
         self.is_auto_typing_traps = False # Is the computer typing the traps right now?
 
         # Config
@@ -67,9 +68,6 @@ class TerminalStateManager:
             case State.INSERT_TEXT:
                 self.handle_insert_text_keyboard()
             
-        if self.is_typed(['q', 'q']):
-            if not self.is_auto_typing_traps:
-                threading.Thread(target=self.start_automatic_trap_writing).start()
 
     def handle_key_buffer(self, key: str):
         print(key.name)
@@ -137,6 +135,11 @@ class TerminalStateManager:
         # Enter view monitor text
         elif self.is_typed(['m']):
             self.insert_view_monitor_text()
+        # Set all the traps
+        elif self.is_typed(['q', 'q']):
+            if self.want_all_traps: # Don't write if we disabled all traps
+                self.writing_queue.clear()
+            self.want_all_traps = not self.want_all_traps
         
         # Control + C wipes buffer
         self.handle_control_c()
@@ -227,9 +230,13 @@ class TerminalStateManager:
     def start_automatic_trap_writing(self):
         print("STARTED WRITING")
         self.is_auto_typing_traps = True
-        for trap in self.traps:
+
+        trap_set = self.traps
+        if self.want_all_traps:
+            trap_set = self.all_traps
+
+        for trap in trap_set:
             self.writing_queue.extend(deque([("bot",f"\n{trap}\n")]))  # two \n\n in case one is missed
-        
         while len(self.writing_queue) > 0:
             # Write could be of type list of strings or a single key
             type, write = self.writing_queue.popleft()
@@ -269,7 +276,7 @@ class TerminalStateManager:
                 pause_from_starting = 0.5
                 sleep(pause_from_starting) # sleep here to not immediately type and ruin the input of 'view monitor'
                 starting_time = time()
-                if len(self.traps) > 0:
+                if len(self.traps) > 0 or self.want_all_traps:
                     thread = threading.Thread(target=self.start_automatic_trap_writing)
                     thread.start()
                     thread.join()
