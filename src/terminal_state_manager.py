@@ -29,9 +29,13 @@ class TerminalStateManager:
 
         # Flags
         self.first_terminal_enter = True # Makes you type view monitor on the first go
-        self.running_auto_trap_thread = True
+        self.run_auto_trap_thread = True
         self.want_all_traps = False # Will type all combinations
         self.is_auto_typing_traps = False # Is the computer typing the traps right now?
+        self.is_running_manager = False
+
+        # Timer for the trap thread
+        self.start_time = time()
 
         # Config
         self.config = ConfigSingleton()
@@ -88,7 +92,6 @@ class TerminalStateManager:
     def listen_to_keyboard(self, suppress):
         # If is auto typing, suppress the user input
         keyboard.on_press(self.handle_key_buffer, suppress=suppress)
-    
     # Reduce repeated code for keyboard setup
 
     def handle_control_c(self):
@@ -100,7 +103,9 @@ class TerminalStateManager:
         print("gaming state")
         self.state = State.GAMEPLAY
         self.first_terminal_enter = True
-        self.writing_queue.clear() # Stop writing
+        self.clear_all_buffers() # Stop writing
+        self.run_auto_trap_thread = False
+
         self.listen_to_keyboard(False)
     def handle_gameplay_keyboard(self):
         # Enter Terminal State
@@ -112,6 +117,9 @@ class TerminalStateManager:
         print("terminal state")
         self.state = State.TERMINAL
         self.listen_to_keyboard(True)
+        self.run_auto_trap_thread = True
+        if not self.is_running_manager:
+            threading.Thread(target=self.automatic_trap_writing_manager).start()
 
         if self.first_terminal_enter:
             self.first_terminal_enter = False
@@ -257,42 +265,59 @@ class TerminalStateManager:
             match type:
                 case "bot":
                     keyboard.write(write, delay=input_delay)
-                    # +1 for good measure on waiting
-                    waiting = (len(write)+1) * input_delay
+                    # +2 for good measure on waiting
+                    waiting = (len(write)+2) * input_delay
                 case "user":
                     keyboard.write("\n", delay=input_delay)
                     for key in write:
                         self.keyboard_manager.press_key(key)
                     keyboard.write("\n", delay=input_delay)
 
-                    waiting = (len(write)+2) * input_delay
-       
+                    # +4 for good measure
+                    waiting = (len(write)+4) * input_delay
+                    
             sleep(waiting)
         
+        time_since_start_of_trap_thread = time() - self.start_time
+        time_left = self.config.get("TRAP_TIMER_DURATION") - time_since_start_of_trap_thread
+        # If there is time to return the terminal back to normal
+        if time_left > 0:
+            # Try catch since the user could clear the self.to_be_written buffer at any time
+            try:
+                # Finish off user typed buffer that is not done from the terminal
+                for i in range(len(self.to_be_written)):
+                    self.keyboard_manager.press_key(self.to_be_written[i])
+                    sleep(input_delay)
+                sleep(input_delay*2) # extra sleep for safety
+            except:
+                sleep(input_delay)
+
         self.is_auto_typing_traps = False
-
-        # Finish off user typed buffer that is not done from the terminal
-        for i in range(len(self.to_be_written)):
-            self.keyboard_manager.press_key(self.to_be_written[i])
-
         print("ENDING WRITING")
-
-    def stop(self):
-        self.running_auto_trap_thread = False
+    
+    def clear_all_buffers(self):
+        self.to_be_written.clear()
+        self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self):
-        ideal_timer = 5
+        ideal_timer = self.config.get("TRAP_TIMER_DURATION")
 
-        while self.running_auto_trap_thread:
+        initial_call = True
+        self.is_running_manager = True
+        while self.run_auto_trap_thread:
             if self.state is not State.GAMEPLAY:
-                start_time = time()
+                self.start_time = time()
+
+                if initial_call:
+                    sleep(1)
+                    initial_call = False
 
                 if (len(self.traps) > 0 or self.want_all_traps):
                     thread = threading.Thread(target=self.start_automatic_trap_writing)
                     thread.start()
                     thread.join()
 
-                elapsed_time = time() - start_time
+                elapsed_time = time() - self.start_time
                 remaining_time = max(0, ideal_timer - elapsed_time)
 
                 while remaining_time > 0 and self.state is not State.GAMEPLAY:
@@ -302,3 +327,4 @@ class TerminalStateManager:
 
             else:
                 sleep(0.1)
+        self.is_running_manager = False
