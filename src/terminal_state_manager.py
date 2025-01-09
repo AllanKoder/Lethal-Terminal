@@ -265,18 +265,17 @@ class TerminalStateManager:
             match type:
                 case "bot":
                     keyboard.write(write, delay=input_delay)
-                    # +2 for good measure on waiting
-                    waiting = (len(write)+2) * input_delay
+                    waiting = (len(write)) * input_delay
                 case "user":
                     keyboard.write("\n", delay=input_delay)
                     for key in write:
                         self.keyboard_manager.press_key(key)
                     keyboard.write("\n", delay=input_delay)
-
-                    # +4 for good measure
-                    waiting = (len(write)+4) * input_delay
+                    waiting = (len(write)+2) * input_delay
                     
-            sleep(waiting)
+            # The delay is doubled (not sure why x2 is better, but it works better this way)
+            # Need some help figuring out the timing for this thread
+            sleep(waiting*2) 
         
         time_since_start_of_trap_thread = time() - self.start_time
         time_left = self.config.get("TRAP_TIMER_DURATION") - time_since_start_of_trap_thread
@@ -287,8 +286,7 @@ class TerminalStateManager:
                 # Finish off user typed buffer that is not done from the terminal
                 for i in range(len(self.to_be_written)):
                     self.keyboard_manager.press_key(self.to_be_written[i])
-                    sleep(input_delay)
-                sleep(input_delay*2) # extra sleep for safety
+                sleep(len(self.to_be_written)*2*input_delay)
             except:
                 sleep(input_delay)
 

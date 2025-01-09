@@ -1,4 +1,4 @@
 {
-    "INPUT_DELAY": 0.015,
+    "INPUT_DELAY": 0.001,
     "TRAP_TIMER_DURATION": 5
 }
