@@ -6,35 +6,8 @@ import keyboard
 import threading
 
 from .traps import is_valid_trap
-INPUT_DELAY = 0.02
+from .keyboard_manager import keyboard_setup
 
-class KeyboardManager:
-    def __init__(self):
-        self.queue = deque()
-        self.lock = threading.Lock()
-        self.thread = threading.Thread(target=self.process_keys)
-        self.thread.start()
-
-    def process_keys(self):
-        while self.running:
-            with self.lock:
-                if len(self.queue) > 0:
-                    key = self.queue.popleft()
-                else:
-                    key = None
-
-            if key is not None:
-                keyboard.press(key)
-                sleep(INPUT_DELAY)
-                keyboard.release(key)
-            else:
-                sleep(0.01)  # Sleep briefly to stop overloading the system
-
-    def press_key(self, key):
-        with self.lock:
-            self.queue.append(key)
-
-        
 class State(Enum):
     GAMEPLAY = 0
     TERMINAL = 1
@@ -42,8 +15,9 @@ class State(Enum):
     DELETE_TRAP = 3
     INSERT_TEXT = 4
 
+INPUT_DELAY = 0.02
 class TerminalStateManager:
-    def __init__(self):
+    def __init__(self, keyboard_manager):
         # What the keyboard shows
         self.buffer = deque([]) # will be flushed with 'enter'
         
@@ -52,7 +26,7 @@ class TerminalStateManager:
         # What the user was typing as automatic typing was occuring and ended, so needs to be finished
         self.unfinished_writing_in_terminal = deque([]) # What the user didn't finish while the automation was happening
 
-        self.keyboard_manager = KeyboardManager()
+        self.keyboard_manager = keyboard_manager
         # The things are to be typed and is handled in a queue
         self.writing_queue = deque([])
 
@@ -118,16 +92,10 @@ class TerminalStateManager:
         keyboard.on_press(self.handle_key_buffer, suppress=suppress)
     
     # Reduce repeated code for keyboard setup
-    def keyboard_setup(func):
-        def decorator(self):
-            keyboard.unhook_all()
-            func(self)
-        return decorator
 
     def handle_control_c(self):
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
-
 
     @keyboard_setup
     def gameplay_state(self):
@@ -248,11 +216,11 @@ class TerminalStateManager:
         self.insert_event_to_be_written(event)
 
     def insert_switch_player_text(self):
-        for k in ['enter', 'enter', 's','w','i','t','c','h','enter']:
+        for k in ['enter', 's','w','i','t','c','h','enter']:
             self.insert_event_to_be_written(k)
     
     def insert_view_monitor_text(self):
-        for k in ['enter', 'enter', 'v','i','e','w','space','m','o','n','i','t','o','r','enter']:
+        for k in ['enter','v','i','e','w','space','m','o','n','i','t','o','r','enter']:
             # This command takes more time, needs more waiting
             self.insert_event_to_be_written(k)
 
@@ -265,18 +233,21 @@ class TerminalStateManager:
         while len(self.writing_queue) > 0:
             type, write = self.writing_queue.popleft()
 
+            # Write could be of type list of strings or a single key
+            waiting = 0
             match type:
                 case "bot":
                     keyboard.write(write, delay=INPUT_DELAY)
+                    # +2 for good measure on waiting
+                    waiting = (len(write)+2) * INPUT_DELAY
                 case "user":
-                    keyboard.write("\n")
-                    keyboard.write("\n")
+                    keyboard.write("\n", delay=INPUT_DELAY)
                     for key in write:
                         self.keyboard_manager.press_key(key)
-                    # add an extra \n in case it was missed
-                    keyboard.write("\n")
+                    keyboard.write("\n", delay=INPUT_DELAY)
+                    # +4 on good measure on waiting
+                    waiting = (len(write)+4) * INPUT_DELAY
        
-            waiting = (len(write)+1) * INPUT_DELAY
             sleep(waiting)
         
         self.is_auto_typing_traps = False

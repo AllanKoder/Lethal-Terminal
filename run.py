@@ -1,6 +1,7 @@
 from Lethal.terminal_state_manager import TerminalStateManager
-import keyboard
+from Lethal.keyboard_manager import KeyboardManager
 
 if __name__ == "__main__":
-    manager = TerminalStateManager()
-    keyboard.wait()  # Keep the program running
+    keyboard_manager = KeyboardManager()
+    manager = TerminalStateManager(keyboard_manager)
+    keyboard_manager.wait()  # Keep the program running
