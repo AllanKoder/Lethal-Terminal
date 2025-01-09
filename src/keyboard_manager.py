@@ -25,7 +25,7 @@ class KeyboardManager:
 
             if key is not None:
                 keyboard.press(key)
-                sleep(self.config.get("INPUT_DELAY"))
+                sleep(self.config.get("USER_INPUT_DELAY"))
                 keyboard.release(key)
             else:
                 sleep(0.01)  # Sleep briefly to avoid overloading

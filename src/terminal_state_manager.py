@@ -15,6 +15,7 @@ class State(Enum):
     ADD_TRAP = 2
     DELETE_TRAP = 3
     INSERT_TEXT = 4
+    TRANSMIT_TEXT = 5
 
 class TerminalStateManager:
     def __init__(self, keyboard_manager):
@@ -25,7 +26,7 @@ class TerminalStateManager:
         # The traps (e.g. mines, turrets)
         self.traps = set() # List of traps
         # All the traps in the game
-        self.all_traps = {f"{chr(i)}{j}" for i in range(ord('a'), ord('i')+1) for j in range(10)}
+        self.all_traps = {f"{chr(i)}{j}" for i in range(ord('a'), ord('z')+1) for j in range(10)}
 
         # Flags
         self.first_terminal_enter = True # Makes you type view monitor on the first go
@@ -71,8 +72,9 @@ class TerminalStateManager:
                 self.handle_delete_trap_keyboard()
             case State.INSERT_TEXT:
                 self.handle_insert_text_keyboard()
+            case State.TRANSMIT_TEXT:
+                self.handle_transmit_text_keyboard()
             
-
     def handle_key_buffer(self, key: str):
         print(key.name)
         # Add the key to the buffer
@@ -117,6 +119,7 @@ class TerminalStateManager:
         print("terminal state")
         self.state = State.TERMINAL
         self.listen_to_keyboard(True)
+        self.clear_to_be_written_buffer() # Clear buffer
         self.run_auto_trap_thread = True
         if not self.is_running_manager:
             threading.Thread(target=self.automatic_trap_writing_manager).start()
@@ -143,6 +146,9 @@ class TerminalStateManager:
         # Enter view monitor text
         elif self.is_typed(['m']):
             self.insert_view_monitor_text()
+        # Transmit message state
+        elif self.is_typed(['t']):
+            self.transmit_text_state()
         # Set all the traps
         elif self.is_typed(['q', 'q']):
             if self.want_all_traps: # Don't write if we disabled all traps
@@ -201,7 +207,7 @@ class TerminalStateManager:
 
             # Clear the buffer since it is a newline
             if key_event == 'enter':
-                self.to_be_written.clear()
+                self.clear_to_be_written_buffer()
             
         
         # System is typing traps
@@ -209,7 +215,7 @@ class TerminalStateManager:
             if key_event == 'enter':
                 # Send the line that was desired to be typed to the writing queue
                 self.writing_queue.appendleft(("user", deque(self.to_be_written)))
-                self.to_be_written.clear()
+                self.clear_to_be_written_buffer()
         
         # Clean the to_be_written buffer, we don't want to save deletes, since it is just removing elements from the buffer
         if key_event == 'backspace':
@@ -241,10 +247,35 @@ class TerminalStateManager:
             # This command takes more time, needs more waiting
             self.insert_event_to_be_written(k)
 
+    @keyboard_setup
+    def transmit_text_state(self):
+        self.to_be_written.clear()
+        for k in ['enter','t','r','a','n','s','m','i','t','space']:
+            # This command takes more time, needs more waiting
+            self.insert_event_to_be_written(k)
+        
+        self.state = State.TRANSMIT_TEXT
+        self.listen_to_keyboard(True)
+    def handle_transmit_text_keyboard(self):
+        if self.is_typed(['ctrl', 'c']):
+            self.terminal_state()
+            return
+
+        event = self.buffer[-1]
+        self.insert_event_to_be_written(event)
+
+        # Finished transmitting
+        if event == 'enter':
+            self.terminal_state()
+
+    def clear_to_be_written_buffer(self):
+        self.to_be_written.clear()
+
     # Thread to handle writing the trap
     def start_automatic_trap_writing(self):
         print("STARTED WRITING")
-        input_delay = self.config.get("INPUT_DELAY")
+        bot_input_delay = self.config.get("BOT_INPUT_DELAY")
+        user_input_delay = self.config.get("USER_INPUT_DELAY")
 
         self.is_auto_typing_traps = True
 
@@ -256,7 +287,7 @@ class TerminalStateManager:
             self.writing_queue.extend(deque([("bot",f"{trap}\n")]))
 
         # In case the user hasn't finished typing something
-        keyboard.write("\n", delay=input_delay) 
+        keyboard.write("\n", delay=bot_input_delay) 
         while len(self.writing_queue) > 0:
             # Write could be of type list of strings or a single key
             type, write = self.writing_queue.popleft()
@@ -264,14 +295,14 @@ class TerminalStateManager:
             waiting = 0 # Time to wait for timing this function correctly, so it ends when the typing ends as well
             match type:
                 case "bot":
-                    keyboard.write(write, delay=input_delay)
-                    waiting = (len(write)) * input_delay
+                    keyboard.write(write, delay=bot_input_delay)
+                    waiting = (len(write)) * bot_input_delay
                 case "user":
-                    keyboard.write("\n", delay=input_delay)
+                    keyboard.write("\n", delay=bot_input_delay)
                     for key in write:
                         self.keyboard_manager.press_key(key)
-                    keyboard.write("\n", delay=input_delay)
-                    waiting = (len(write)+2) * input_delay
+                    keyboard.write("\n", delay=bot_input_delay)
+                    waiting = len(write) * user_input_delay + 2 * bot_input_delay
                     
             # The delay is doubled (not sure why x2 is better, but it works better this way)
             # Need some help figuring out the timing for this thread
@@ -286,15 +317,15 @@ class TerminalStateManager:
                 # Finish off user typed buffer that is not done from the terminal
                 for i in range(len(self.to_be_written)):
                     self.keyboard_manager.press_key(self.to_be_written[i])
-                sleep(len(self.to_be_written)*2*input_delay)
+                sleep(len(self.to_be_written)*2*user_input_delay)
             except:
-                sleep(input_delay)
+                sleep(user_input_delay)
 
         self.is_auto_typing_traps = False
         print("ENDING WRITING")
     
     def clear_all_buffers(self):
-        self.to_be_written.clear()
+        self.clear_to_be_written_buffer()
         self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self):
