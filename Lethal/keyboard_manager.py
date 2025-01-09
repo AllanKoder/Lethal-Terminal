@@ -3,15 +3,18 @@ import keyboard
 import threading
 from collections import deque
 
-INPUT_DELAY = 0.02
+from .config import ConfigSingleton
+
 class KeyboardManager:
     def __init__(self):
         self.queue = deque()
         self.lock = threading.Lock()
         self.running = True  # keep running or end?
+
         self.thread = threading.Thread(target=self.process_keys)
         self.thread.start()
 
+        self.config = ConfigSingleton()
     def process_keys(self):
         while self.running:
             with self.lock:
@@ -22,7 +25,7 @@ class KeyboardManager:
 
             if key is not None:
                 keyboard.press(key)
-                sleep(INPUT_DELAY)
+                sleep(self.config.get("INPUT_DELAY"))
                 keyboard.release(key)
             else:
                 sleep(0.01)  # Sleep briefly to avoid overloading

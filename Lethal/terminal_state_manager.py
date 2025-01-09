@@ -1,12 +1,13 @@
 from enum import Enum
 from typing import List
 from collections import deque
-from time import sleep
+from time import sleep, time
 import keyboard
 import threading
 
 from .traps import is_valid_trap
 from .keyboard_manager import keyboard_setup
+from .config import ConfigSingleton
 
 class State(Enum):
     GAMEPLAY = 0
@@ -15,31 +16,30 @@ class State(Enum):
     DELETE_TRAP = 3
     INSERT_TEXT = 4
 
-INPUT_DELAY = 0.02
 class TerminalStateManager:
     def __init__(self, keyboard_manager):
-        # What the keyboard shows
-        self.buffer = deque([]) # will be flushed with 'enter'
-        
-        # What the user is typing as the automatic typing is occuring, and will be typed when flushed
-        self.to_be_written = deque([]) # What the user is about to write
-        # What the user was typing as automatic typing was occuring and ended, so needs to be finished
-        self.unfinished_writing_in_terminal = deque([]) # What the user didn't finish while the automation was happening
-
-        self.keyboard_manager = keyboard_manager
-        # The things are to be typed and is handled in a queue
-        self.writing_queue = deque([])
+        self.buffer = deque([]) # What the keyboard has typed
+        self.to_be_written = deque([]) # What the user is about to write before the interuption by the automated trap system
+        self.writing_queue = deque([]) # The things that are to be typed
 
         # The traps (e.g. mines, turrets)
-        self.traps = set([ a + str(n) for a in 'abcdefghi' for n in range(0,10)]) # List of traps
+        self.traps = set() # List of traps
+        # All the traps in the game
+        self.all_traps = {f"{chr(i)}{j}" for i in range(ord('a'), ord('i')+1) for j in range(10)}
 
+        # Flags
+        self.first_terminal_enter = True # Makes you type view monitor on the first go
+        self.running_auto_trap_thread = True
         self.is_auto_typing_traps = False # Is the computer typing the traps right now?
 
-        # First Terminal Enter
-        self.first_terminal_enter = True # Makes you type view monitor on the first go
-
+        # Config
+        self.config = ConfigSingleton()
+        # Keyboard
+        self.keyboard_manager = keyboard_manager
+        
         # The current state
         self.state = None
+
         self.gameplay_state()
 
     # Check if the last few characters in the buffer have been typed to the array
@@ -69,7 +69,7 @@ class TerminalStateManager:
             
         if self.is_typed(['q', 'q']):
             if not self.is_auto_typing_traps:
-                threading.Thread(target=self.automatic_trap_writing).start()
+                threading.Thread(target=self.start_automatic_trap_writing).start()
 
     def handle_key_buffer(self, key: str):
         print(key.name)
@@ -102,6 +102,7 @@ class TerminalStateManager:
         print("gaming state")
         self.state = State.GAMEPLAY
         self.first_terminal_enter = True
+        self.writing_queue.clear() # Stop writing
         self.listen_to_keyboard(False)
     def handle_gameplay_keyboard(self):
         # Enter Terminal State
@@ -194,12 +195,10 @@ class TerminalStateManager:
         
         # System is typing traps
         else:
-            self.unfinished_writing_in_terminal.append(key_event)
             if key_event == 'enter':
                 # Send the line that was desired to be typed to the writing queue
                 self.writing_queue.appendleft(("user", deque(self.to_be_written)))
                 self.to_be_written.clear()
-                self.unfinished_writing_in_terminal.clear()
 
     @keyboard_setup
     def insert_text_state(self):
@@ -224,36 +223,59 @@ class TerminalStateManager:
             # This command takes more time, needs more waiting
             self.insert_event_to_be_written(k)
 
-    def automatic_trap_writing(self):
+    # Thread to handle writing the trap
+    def start_automatic_trap_writing(self):
         print("STARTED WRITING")
         self.is_auto_typing_traps = True
         for trap in self.traps:
             self.writing_queue.extend(deque([("bot",f"\n{trap}\n")]))  # two \n\n in case one is missed
         
         while len(self.writing_queue) > 0:
+            # Write could be of type list of strings or a single key
             type, write = self.writing_queue.popleft()
 
-            # Write could be of type list of strings or a single key
-            waiting = 0
+            waiting = 0 # Time to wait for timing this function correctly, so it ends when the typing ends as well
+            input_delay = self.config.get("INPUT_DELAY")
             match type:
                 case "bot":
-                    keyboard.write(write, delay=INPUT_DELAY)
+                    keyboard.write(write, delay=input_delay)
                     # +2 for good measure on waiting
-                    waiting = (len(write)+2) * INPUT_DELAY
+                    waiting = (len(write)+2) * input_delay
                 case "user":
-                    keyboard.write("\n", delay=INPUT_DELAY)
+                    keyboard.write("\n", delay=input_delay)
                     for key in write:
                         self.keyboard_manager.press_key(key)
-                    keyboard.write("\n", delay=INPUT_DELAY)
+                    keyboard.write("\n", delay=input_delay)
                     # +4 on good measure on waiting
-                    waiting = (len(write)+4) * INPUT_DELAY
+                    waiting = (len(write)+4) * input_delay
        
             sleep(waiting)
         
         self.is_auto_typing_traps = False
 
         # Finish off buffer that is not done from the terminal
-        while len(self.unfinished_writing_in_terminal) > 0:
-            keyboard.press_and_release(self.unfinished_writing_in_terminal.popleft())
+        for i in range(len(self.to_be_written)):
+            self.keyboard_manager.press_key(self.to_be_written[i])
 
         print("ENDING WRITING")
+
+    def stop(self):
+        self.running_auto_trap_thread = False
+
+    def automatic_trap_writing_manager(self):
+        ideal_timer = 5
+        while self.running_auto_trap_thread:
+            if self.state is not State.GAMEPLAY:
+                sleep(1)
+                starting_time = time()
+                thread = threading.Thread(target=self.start_automatic_trap_writing)
+                thread.start()
+                thread.join()
+                ending_time = time()
+
+                time_already_used = ending_time - starting_time
+                time_to_wait = ideal_timer - time_already_used - 1
+                if time_to_wait > 0:
+                    sleep(time_to_wait)
+            else:
+                sleep(0.1)
