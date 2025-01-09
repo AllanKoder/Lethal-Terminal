@@ -202,7 +202,14 @@ class TerminalStateManager:
                 # Send the line that was desired to be typed to the writing queue
                 self.writing_queue.appendleft(("user", deque(self.to_be_written)))
                 self.to_be_written.clear()
-
+        
+        # Clean the to_be_written buffer, we don't want to save deletes, since it is just removing elements from the buffer
+        if key_event == 'backspace':
+            self.to_be_written.pop()
+            if len(self.to_be_written) > 0:
+                self.to_be_written.pop()
+            
+        
     @keyboard_setup
     def insert_text_state(self):
         print("insert text state")
@@ -229,6 +236,8 @@ class TerminalStateManager:
     # Thread to handle writing the trap
     def start_automatic_trap_writing(self):
         print("STARTED WRITING")
+        input_delay = self.config.get("INPUT_DELAY")
+
         self.is_auto_typing_traps = True
 
         trap_set = self.traps
@@ -236,31 +245,33 @@ class TerminalStateManager:
             trap_set = self.all_traps
 
         for trap in trap_set:
-            self.writing_queue.extend(deque([("bot",f"\n{trap}\n")]))  # two \n\n in case one is missed
+            self.writing_queue.extend(deque([("bot",f"{trap}\n")]))
+
+        # In case the user hasn't finished typing something
+        keyboard.write("\n", delay=input_delay) 
         while len(self.writing_queue) > 0:
             # Write could be of type list of strings or a single key
             type, write = self.writing_queue.popleft()
 
             waiting = 0 # Time to wait for timing this function correctly, so it ends when the typing ends as well
-            input_delay = self.config.get("INPUT_DELAY")
             match type:
                 case "bot":
                     keyboard.write(write, delay=input_delay)
-                    # +2 for good measure on waiting
-                    waiting = (len(write)+2) * input_delay
+                    # +1 for good measure on waiting
+                    waiting = (len(write)+1) * input_delay
                 case "user":
                     keyboard.write("\n", delay=input_delay)
                     for key in write:
                         self.keyboard_manager.press_key(key)
                     keyboard.write("\n", delay=input_delay)
-                    # +4 on good measure on waiting
-                    waiting = (len(write)+4) * input_delay
+
+                    waiting = (len(write)+2) * input_delay
        
             sleep(waiting)
         
         self.is_auto_typing_traps = False
 
-        # Finish off buffer that is not done from the terminal
+        # Finish off user typed buffer that is not done from the terminal
         for i in range(len(self.to_be_written)):
             self.keyboard_manager.press_key(self.to_be_written[i])
 
@@ -271,20 +282,23 @@ class TerminalStateManager:
 
     def automatic_trap_writing_manager(self):
         ideal_timer = 5
+
         while self.running_auto_trap_thread:
             if self.state is not State.GAMEPLAY:
-                pause_from_starting = 0.5
-                sleep(pause_from_starting) # sleep here to not immediately type and ruin the input of 'view monitor'
-                starting_time = time()
-                if len(self.traps) > 0 or self.want_all_traps:
+                start_time = time()
+
+                if (len(self.traps) > 0 or self.want_all_traps):
                     thread = threading.Thread(target=self.start_automatic_trap_writing)
                     thread.start()
                     thread.join()
-                ending_time = time()
 
-                time_already_used = ending_time - starting_time
-                time_to_wait = ideal_timer - time_already_used - pause_from_starting
-                if time_to_wait > 0:
-                    sleep(time_to_wait)
+                elapsed_time = time() - start_time
+                remaining_time = max(0, ideal_timer - elapsed_time)
+
+                while remaining_time > 0 and self.state is not State.GAMEPLAY:
+                    sleep_time = min(0.1, remaining_time)
+                    sleep(sleep_time)
+                    remaining_time -= sleep_time
+
             else:
                 sleep(0.1)

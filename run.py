@@ -1,5 +1,5 @@
-from Lethal.terminal_state_manager import TerminalStateManager
-from Lethal.keyboard_manager import KeyboardManager
+from src.terminal_state_manager import TerminalStateManager
+from src.keyboard_manager import KeyboardManager
 import threading
 
 if __name__ == "__main__":
