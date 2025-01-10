@@ -43,10 +43,13 @@ class KeyboardManager:
         # Wait for a keyboard event
         keyboard.wait()
 
+    # TODO: def write(self):
+        
 
 # Decorator for keyboard setup
 def keyboard_setup(func):
     def decorator(self):
         keyboard.unhook_all()
         func(self)
+        self.terminal_ui.render()
     return decorator
