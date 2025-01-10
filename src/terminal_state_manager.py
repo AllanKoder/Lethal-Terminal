@@ -49,12 +49,15 @@ class TerminalStateManager:
         # Keyboard
         self.keyboard_manager = keyboard_manager
 
+        self.refresh_callback = None
         # The current state
         self.state = State.GAMEPLAY
 
-        # The UI
-        self.terminal_ui = TerminalUI(self)
         self.gameplay_state()
+    
+    def set_refresh_callback(self, callback):
+        self.refresh_callback = callback
+
 
     # Check if the last few characters in the buffer have been typed to the array
     def is_typed(self, array: List[str]):
@@ -252,6 +255,8 @@ class TerminalStateManager:
             self.to_be_written.pop()
             if len(self.to_be_written) > 0:
                 self.to_be_written.pop()
+        
+        self.refresh_callback()
         
         
     @keyboard_setup

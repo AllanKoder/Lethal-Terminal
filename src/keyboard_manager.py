@@ -57,4 +57,6 @@ def keyboard_setup(func):
     def decorator(self):
         keyboard.unhook_all()
         func(self)
+        if self.refresh_callback:
+            self.refresh_callback()
     return decorator
