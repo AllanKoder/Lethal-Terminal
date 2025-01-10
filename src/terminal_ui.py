@@ -15,24 +15,33 @@ class TerminalUI:
         self.populate_player_table()
         self.populate_radar_table()
         
+        # Update UI initially
         self.update_ui()
 
     def create_frames(self):
         """Create frames for layout."""
+        # Frame for state, buffer, and traps at the top
+        self.info_frame = ttk.Frame(self.root)
+        self.info_frame.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
+
+        # State label
+        self.state_label = ttk.Label(self.info_frame, text="", font=("Helvetica", 12, "bold"))
+        self.state_label.grid(row=0, column=0, sticky="w")
+
+        # Buffer label
+        self.buffer_label = ttk.Label(self.info_frame, text="", font=("Helvetica", 12, "bold"))
+        self.buffer_label.grid(row=1, column=0, sticky="w")
+
+        # Traps frame
+        self.traps_frame = ttk.LabelFrame(self.info_frame, text="Traps")
+        self.traps_frame.grid(row=2, column=0, sticky="ew", padx=10, pady=5)
+
+        # Frame for player and radar tables at the bottom
         self.player_frame = ttk.LabelFrame(self.root, text="Players")
-        self.player_frame.grid(row=0, column=0, padx=10, pady=10)
+        self.player_frame.grid(row=1, column=0, padx=10, pady=10)
 
         self.radar_frame = ttk.LabelFrame(self.root, text="Radars")
-        self.radar_frame.grid(row=0, column=1, padx=10, pady=10)
-
-        self.state_label = ttk.Label(self.root, text="", font=("Helvetica", 12, "bold"), foreground="yellow")
-        self.state_label.grid(row=1, columnspan=2)
-
-        self.buffer_label = ttk.Label(self.root, text="", font=("Helvetica", 12, "bold"))
-        self.buffer_label.grid(row=2, columnspan=2)
-
-        self.traps_frame = ttk.LabelFrame(self.root, text="Traps")
-        self.traps_frame.grid(row=3, columnspan=2, padx=10, pady=10)
+        self.radar_frame.grid(row=1, column=1, padx=10, pady=10)
 
     def populate_player_table(self):
         """Populate player table."""
@@ -68,6 +77,7 @@ class TerminalUI:
 
     def display_traps(self):
         """Display traps information."""
+        
         # Determine the traps display text
         traps_display = "ALL TRAPS" if self.state_manager.want_all_traps else ' '.join(self.state_manager.traps)
         
@@ -79,13 +89,14 @@ class TerminalUI:
         traps_label = ttk.Label(self.traps_frame, text=traps_display)
         traps_label.pack(padx=10, pady=10)
 
-
     def run(self):
         """Run the tkinter main loop."""
         self.refresh_ui()
         self.root.mainloop()
 
     def refresh_ui(self):
+        """Refresh the UI with the latest data."""
+        
         # Update state and traps display
         self.display_state()
         
@@ -97,7 +108,10 @@ class TerminalUI:
         self.display_traps()
 
     def update_ui(self):
-        """Update the UI with the latest data."""
+        """Update the UI with the latest data at regular intervals."""
+        
+        # Refresh UI components
         self.refresh_ui()
+        
         # Schedule the next update after 1000 milliseconds (1 second)
         self.root.after(1000, self.update_ui)

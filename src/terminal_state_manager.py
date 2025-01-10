@@ -232,7 +232,8 @@ class TerminalStateManager:
 
     def insert_event_to_be_written(self, key_event: str):
         # Add the latest event to the to_be_written list
-        self.to_be_written.append(key_event)
+        if len(key_event) == 1 or key_event in ['space', 'backspace']:
+            self.to_be_written.append(key_event)
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
             # handle the inputs given
@@ -256,7 +257,8 @@ class TerminalStateManager:
             if len(self.to_be_written) > 0:
                 self.to_be_written.pop()
         
-        self.refresh_callback()
+        if self.refresh_callback:
+            self.refresh_callback()
         
         
     @keyboard_setup

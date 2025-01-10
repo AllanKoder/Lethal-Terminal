@@ -2,7 +2,6 @@ from src.terminal_state_manager import TerminalStateManager
 from src.keyboard_manager import KeyboardManager
 from src.terminal_ui import TerminalUI
 import tkinter as tk
-from tkinter import ttk
 
 from src.terminal_ui import TerminalUI
 
