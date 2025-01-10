@@ -17,23 +17,28 @@ class KeyboardManager:
         self.config = ConfigSingleton()
     def process_keys(self):
         while self.running:
+            type, arg2 = "none", None
             with self.lock:
                 if len(self.queue) > 0:
-                    key = self.queue.popleft()
-                else:
-                    key = None
-
-            if key is not None:
-                keyboard.press(key)
-                sleep(self.config.get("USER_INPUT_DELAY"))
-                keyboard.release(key)
-            else:
-                sleep(0.01)  # Sleep briefly to avoid overloading
+                    type, arg2 = self.queue.popleft()
+            match type:
+                case "key":
+                    if arg2 is not None:
+                        keyboard.press(arg2)
+                        sleep(self.config.get("USER_INPUT_DELAY"))
+                        keyboard.release(arg2)
+                    else:
+                        sleep(0.01)
+                case "callback":
+                    arg2()
+                case "none":
+                    sleep(0.01)
+                    
 
     def press_key(self, key):
         with self.lock:
-            self.queue.append(key)
-
+            self.queue.append(("key", key))
+    
     def stop(self):
         self.running = False 
         # Wait for the thread to finish
@@ -42,14 +47,14 @@ class KeyboardManager:
     def wait(self):
         # Wait for a keyboard event
         keyboard.wait()
-
-    # TODO: def write(self):
-        
+    
+    def callback(self, callback):
+        with self.lock:
+            self.queue.append(("callback", callback))
 
 # Decorator for keyboard setup
 def keyboard_setup(func):
     def decorator(self):
         keyboard.unhook_all()
         func(self)
-        self.terminal_ui.render()
     return decorator
