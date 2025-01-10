@@ -322,14 +322,16 @@ class TerminalStateManager:
             trap_list = self.all_traps
 
         for trap in trap_list:
-            self.writing_queue.extend(deque([trap[0], trap[1]]))
+            self.writing_queue.append(deque([trap[0], trap[1], 'enter']))
 
-        # In case the user hasn't finished typing something
+        # Get rid of what the user was typing
         self.keyboard_manager.press_key('enter')
         while len(self.writing_queue) > 0:
             # Write is a list of keys to write
             write = self.writing_queue.popleft()
 
+            # Get rid of what the user was typing
+            self.keyboard_manager.press_key('enter')
             for key in write:
                 self.keyboard_manager.press_key(key)
                 self.keyboard_manager.callback(self.on_callback)
@@ -337,7 +339,6 @@ class TerminalStateManager:
                 self.callback_event.wait()
                 self.callback_event.clear()
 
-            self.keyboard_manager.press_key('enter')
 
         time_since_start_of_trap_thread = time() - self.start_time
         time_left = self.config.get("TRAP_TIMER_DURATION") - time_since_start_of_trap_thread
