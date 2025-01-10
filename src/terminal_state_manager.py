@@ -83,6 +83,8 @@ class TerminalStateManager:
                 self.handle_suffix_text_enter_keyboard()
             case State.PING_RADAR:
                 self.handle_suffix_text_enter_keyboard()
+            case State.SWITCH_USER:
+                self.handle_switch_user_keyboard()
             
     def handle_key_buffer(self, key: str):
         # Add the key to the buffer
@@ -146,7 +148,7 @@ class TerminalStateManager:
             self.insert_text_state()
         # Enter switch player
         elif self.is_typed(['s']):
-            self.insert_switch_player_text()
+            self.switch_user_state()
         # Enter view monitor text
         elif self.is_typed(['v']):
             self.insert_view_monitor_text()
@@ -263,9 +265,18 @@ class TerminalStateManager:
         event = self.buffer[-1]
         self.insert_event_to_be_written(event)
 
-    def insert_switch_player_text(self):
-        for k in ['enter', 's','w','i','t','c','h','enter']:
-            self.insert_event_to_be_written(k)
+    @keyboard_setup
+    def switch_user_state(self):        
+        self.state = State.SWITCH_USER
+        self.listen_to_keyboard(True)
+    def handle_switch_user_keyboard(self):
+        # Switch
+        if self.is_typed(['s']):
+            for k in ['enter', 's','w','i','t','c','h','enter']:
+                self.insert_event_to_be_written(k)
+            self.terminal_state()
+
+        self.handle_control_c()
     
     def insert_view_monitor_text(self):
         for k in ['enter','v','i','e','w','space','m','o','n','i','t','o','r','enter']:
