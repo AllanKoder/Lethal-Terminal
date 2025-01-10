@@ -18,7 +18,8 @@ class State(Enum):
     INSERT_TEXT = 4
     TRANSMIT_TEXT = 5
     SWITCH_USER = 6
-    PING_RADAR = 7
+    FLASH_RADAR = 7
+    PING_RADAR = 8
 
 class TerminalStateManager:
     def __init__(self, keyboard_manager):
@@ -82,7 +83,9 @@ class TerminalStateManager:
             case State.TRANSMIT_TEXT:
                 self.handle_suffix_text_enter_keyboard()
             case State.PING_RADAR:
-                self.handle_suffix_text_enter_keyboard()
+                self.handle_radar_command("ping")
+            case State.FLASH_RADAR:
+                self.handle_radar_command("flash")
             case State.SWITCH_USER:
                 self.handle_switch_user_keyboard()
             
@@ -157,10 +160,10 @@ class TerminalStateManager:
             self.transmit_text_state()
         # Ping
         elif self.is_typed(['p']):
-            self.ping_state()
-        # Go to player (switch)
-        elif self.is_typed(['g']):
-            self.ping_state()
+            self.switch_ping_state()
+        # Flash a Radar
+        elif self.is_typed(['f']):
+            self.switch_flash_state()
         # Set all the traps
         elif self.is_typed(['q', 'q']):
             if self.want_all_traps: # Don't write if we disabled all traps
@@ -273,6 +276,54 @@ class TerminalStateManager:
             for k in ['enter', 's','w','i','t','c','h','enter']:
                 self.insert_event_to_be_written(k)
             self.terminal_state()
+        number = self.buffer[-1]
+        if number.isdigit():
+            value = int(number)-1
+            players = self.config.get("PLAYERS")
+            player = None
+            
+            if 0 <= value < len(players):
+                player = players[value]
+            print("Get Player:", player)
+
+            if player:
+                to_type = ['enter', 's','w','i','t','c','h','space']
+                to_type.extend(list(player))
+                to_type.append('enter')
+                for k in to_type:
+                    self.insert_event_to_be_written(k)
+            self.terminal_state()
+
+        self.handle_control_c()
+
+    @keyboard_setup
+    def switch_flash_state(self):        
+        self.state = State.FLASH_RADAR
+        self.listen_to_keyboard(True)
+    @keyboard_setup
+    def switch_ping_state(self):        
+        self.state = State.PING_RADAR
+        self.listen_to_keyboard(True)
+    def handle_radar_command(self, command: str):
+        number = self.buffer[-1]
+        if number.isdigit():
+            value = int(number)-1
+            radars = self.config.get("RADARS")
+            radar = None
+            
+            if 0 <= value < len(radars):
+                radar = radars[value]
+            print("Get Radar:", radar)
+
+            if radar:
+                to_type = ['enter']
+                to_type.extend(list(command))
+                to_type.append('space')
+                to_type.extend(list(radar))
+                to_type.append('enter')
+                for k in to_type:
+                    self.insert_event_to_be_written(k)
+            self.terminal_state()
 
         self.handle_control_c()
     
@@ -288,14 +339,7 @@ class TerminalStateManager:
         
         self.state = State.TRANSMIT_TEXT
         self.listen_to_keyboard(True)
-    @keyboard_setup
-    def ping_state(self):
-        self.to_be_written.clear()
-        for k in ['enter','p','i','n','g','space']:
-            self.insert_event_to_be_written(k)
-        
-        self.state = State.PING_RADAR
-        self.listen_to_keyboard(True)
+
     def handle_suffix_text_enter_keyboard(self):
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
@@ -330,8 +374,6 @@ class TerminalStateManager:
             # Write is a list of keys to write
             write = self.writing_queue.popleft()
 
-            # Get rid of what the user was typing
-            self.keyboard_manager.press_key('enter')
             for key in write:
                 self.keyboard_manager.press_key(key)
                 self.keyboard_manager.callback(self.on_callback)
