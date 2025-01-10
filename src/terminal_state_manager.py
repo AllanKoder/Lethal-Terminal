@@ -17,7 +17,8 @@ class State(Enum):
     DELETE_TRAP = 3
     INSERT_TEXT = 4
     TRANSMIT_TEXT = 5
-    PING_RADAR = 6
+    SWITCH_USER = 6
+    PING_RADAR = 7
 
 class TerminalStateManager:
     def __init__(self, keyboard_manager):
@@ -26,9 +27,10 @@ class TerminalStateManager:
         self.writing_queue = deque([]) # The things that are to be typed
 
         # The traps (e.g. mines, turrets)
-        self.traps = set() # List of traps
+        self.traps = [] # List of traps
         # All the traps in the game
-        self.all_traps = {f"{chr(i)}{j}" for i in range(ord('a'), ord('z')+1) for j in range(10)}
+        self.all_traps = [f"{chr(i)}{j}" for i in range(ord('a'), ord('z')+1) for j in range(10)]
+        self.current_trap = [] # What the user is typing
 
         # Flags
         self.first_terminal_enter = True # Makes you type view monitor on the first go
@@ -108,7 +110,6 @@ class TerminalStateManager:
     @keyboard_setup
     def gameplay_state(self):
         self.state = State.GAMEPLAY
-        self.first_terminal_enter = True
         self.clear_all_buffers() # Stop writing
         self.run_auto_trap_thread = False
 
@@ -147,7 +148,7 @@ class TerminalStateManager:
         elif self.is_typed(['s']):
             self.insert_switch_player_text()
         # Enter view monitor text
-        elif self.is_typed(['m']):
+        elif self.is_typed(['v']):
             self.insert_view_monitor_text()
         # Transmit message state
         elif self.is_typed(['t']):
@@ -171,16 +172,27 @@ class TerminalStateManager:
     @keyboard_setup
     def add_trap_state(self):
         self.state = State.ADD_TRAP
+        self.current_trap.clear()
         self.listen_to_keyboard(True)
 
     def handle_adding_trap_keyboard(self):
-        if (len(self.buffer) >= 3 and self.buffer[-1] == 'enter'):
-            trap = (self.buffer[-3] + self.buffer[-2])
-            if is_valid_trap(trap):
-                self.traps.add(trap)
+        self.current_trap.append(self.buffer[-1])
 
-                # Return to Terminal State
-                self.terminal_state()
+        # Handle delete
+        if self.buffer[-1] == 'backspace':
+            self.current_trap.pop()
+            if len(self.current_trap) > 0:
+                self.current_trap.pop()
+
+        print(self.current_trap)
+
+        if (len(self.current_trap) == 2):
+            trap = (self.current_trap[0] + self.current_trap[1])
+            if is_valid_trap(trap) and trap not in self.traps:
+                self.traps.append(trap)
+
+            # Return to Terminal State
+            self.terminal_state()
 
         self.handle_control_c()
 
@@ -188,16 +200,25 @@ class TerminalStateManager:
     @keyboard_setup
     def remove_trap_state(self):
         self.state = State.DELETE_TRAP
+        self.current_trap.clear()
         self.listen_to_keyboard(True)
 
     def handle_delete_trap_keyboard(self):
-        if (len(self.buffer) >= 3 and self.buffer[-1] == 'enter'):
-            trap = (self.buffer[-3] + self.buffer[-2])
+        self.current_trap.append(self.buffer[-1])
+
+        # Handle delete
+        if self.buffer[-1] == 'backspace':
+            self.current_trap.pop()
+            if len(self.current_trap) > 0:
+                self.current_trap.pop()
+
+        if (len(self.current_trap) == 2):
+            trap = (self.current_trap[0] + self.current_trap[1])
             if is_valid_trap(trap) and trap in self.traps:
                 self.traps.remove(trap)
 
-                # Return to Terminal State
-                self.terminal_state()
+            # Return to Terminal State
+            self.terminal_state()
 
         self.handle_control_c()
 
@@ -289,11 +310,11 @@ class TerminalStateManager:
 
         self.is_auto_typing_traps = True
 
-        trap_set = self.traps
+        trap_list = self.traps
         if self.want_all_traps:
-            trap_set = self.all_traps
+            trap_list = self.all_traps
 
-        for trap in trap_set:
+        for trap in trap_list:
             self.writing_queue.extend(deque([("bot",f"{trap}\n")]))
 
         # In case the user hasn't finished typing something

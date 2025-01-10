@@ -40,7 +40,7 @@ class TerminalUI:
         self.console.print(state_text)
 
         # Buffer display
-        buffer_label = Text(f"TEXT BUFFER: {self.get_text_buffer()}", style="bold blue")
+        buffer_label = Text(f"TEXT BUFFER: {self.get_text_buffer()}", style="bold")
         self.console.print(buffer_label)
 
         # Traps box display logic
