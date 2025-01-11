@@ -233,9 +233,9 @@ class TerminalStateManager:
 
         self.handle_control_c()
 
-    def press_and_wait(self, key_event):
+    def press_key_and_wait(self, key_event):
         self.keyboard_manager.press_key(key_event)
-        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.2 + 0.001 # Added processing speed estimate
+        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.05 + 0.003 # Added processing speed estimate
         sleep(user_input_delay)
 
     def insert_event_to_be_written(self, key_event: str):
@@ -245,7 +245,7 @@ class TerminalStateManager:
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
             # handle the inputs given
-            self.press_and_wait(key_event)
+            self.keyboard_manager.press_key(key_event)
 
             # Clear the buffer since it is a newline
             if key_event == 'enter':
@@ -378,15 +378,15 @@ class TerminalStateManager:
             self.writing_queue.append(deque([trap[0], trap[1]]))
 
         # Get rid of what the user was typing
-        self.press_and_wait('enter')
+        self.press_key_and_wait('enter')
         while len(self.writing_queue) > 0:
             # Write is a list of keys to write
             write = self.writing_queue.popleft()
 
             for key in write:
-                self.press_and_wait(key)
+                self.press_key_and_wait(key)
 
-            self.press_and_wait('enter')
+            self.press_key_and_wait('enter')
         time_since_start_of_trap_thread = time() - self.start_time
         time_left = self.config.get("TRAP_TIMER_DURATION") - time_since_start_of_trap_thread
         # If there is time to return the terminal back to normal
@@ -395,7 +395,7 @@ class TerminalStateManager:
             try:
                 # Finish off user typed buffer that is not done from the terminal
                 for i in range(len(self.to_be_written)):
-                    self.press_and_wait(self.to_be_written[i])
+                    self.press_key_and_wait(self.to_be_written[i])
             except:
                 sleep(0.01)
 

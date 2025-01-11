@@ -1,6 +1,7 @@
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
+from rich.align import Align
 from rich.table import Table
 from rich.columns import Columns
 from .config import ConfigSingleton
@@ -18,7 +19,8 @@ class TerminalUI:
     def render(self):
         """Initial render of the terminal UI."""
         self.console.clear()
-        self.console.print("[bold red]Lethal[/bold red] [green]TERMINAL[/green]")
+        title = Panel("[bold red]LETHAL[/bold red] [green]TERMINAL[/green]", border_style="red")
+        self.console.print(title)
         self.display_content()
 
     def rerender(self):
@@ -44,6 +46,11 @@ class TerminalUI:
         # Use Columns to display tables side by side
         columns = Columns([player_table, radar_table], equal=True)
         self.console.print(columns)
+
+        # Print the event
+        event = "test event, oh no!"
+        event_text = Text(event, style="bold red")
+        self.console.print(event_text)
 
     def create_player_table(self):
         """Create a table for players."""

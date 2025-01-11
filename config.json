@@ -2,11 +2,15 @@
     "USER_INPUT_DELAY": 0.015,
     "TRAP_TIMER_DURATION": 5,
     "PLAYERS": [
-        "eer1",
-        "player2"
+        "player1",
+        "player2",
+        "player3",
+        "player4"
     ],
     "RADARS": [
-        "rada1",
-        "rada4"
+        "radar1",
+        "radar2",
+        "radar3",
+        "radar4"
     ]
 }
