@@ -257,10 +257,6 @@ class TerminalStateManager:
             if len(self.to_be_written) > 0:
                 self.to_be_written.pop()
         
-        if self.refresh_callback:
-            self.refresh_callback()
-        
-        
     @keyboard_setup
     def insert_text_state(self):
         self.state = State.INSERT_TEXT
