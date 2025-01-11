@@ -387,7 +387,7 @@ class TerminalStateManager:
                 # Wait until the callback is called
                 self.callback_event.wait()
                 self.callback_event.clear()
-
+            self.keyboard_manager.press_key('enter')
 
         time_since_start_of_trap_thread = time() - self.start_time
         time_left = self.config.get("TRAP_TIMER_DURATION") - time_since_start_of_trap_thread

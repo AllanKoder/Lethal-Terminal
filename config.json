@@ -1,5 +1,5 @@
 {
-    "USER_INPUT_DELAY": 0.010,
+    "USER_INPUT_DELAY": 0.015,
     "TRAP_TIMER_DURATION": 5,
     "PLAYERS": [
         "eer1",
