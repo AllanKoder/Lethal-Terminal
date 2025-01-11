@@ -39,13 +39,13 @@ class TerminalStateManager:
         self.want_all_traps = False # Will type all combinations
         self.is_auto_typing_traps = False # Is the computer typing the traps right now?
         self.is_running_manager = False
-        self.callback_event = threading.Event()
 
         # Timer for the trap thread
         self.start_time = time()
 
         # Config
         self.config = ConfigSingleton()
+
         # Keyboard
         self.keyboard_manager = keyboard_manager
 
@@ -66,7 +66,7 @@ class TerminalStateManager:
         
         # Check last n elements directly from deque
         for i in range(len(array)):
-            if self.buffer[-(i + 1)] != array[-(i + 1)]:
+            if self.buffer[-(i + 1)].lower() != array[-(i + 1)].lower():
                 return False
         
         return True
@@ -172,6 +172,9 @@ class TerminalStateManager:
             if self.want_all_traps: # Don't write if we disabled all traps
                 self.writing_queue.clear()
             self.want_all_traps = not self.want_all_traps
+            if self.refresh_callback:
+                self.refresh_callback()
+            self.terminal_state()
         
         # Control + C wipes buffer
         self.handle_control_c()
@@ -230,6 +233,11 @@ class TerminalStateManager:
 
         self.handle_control_c()
 
+    def press_and_wait(self, key_event):
+        self.keyboard_manager.press_key(key_event)
+        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.2 + 0.001 # Added processing speed estimate
+        sleep(user_input_delay)
+
     def insert_event_to_be_written(self, key_event: str):
         # Add the latest event to the to_be_written list
         if len(key_event) == 1 or key_event in ['space', 'backspace']:
@@ -237,7 +245,7 @@ class TerminalStateManager:
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
             # handle the inputs given
-            self.keyboard_manager.press_key(key_event)
+            self.press_and_wait(key_event)
 
             # Clear the buffer since it is a newline
             if key_event == 'enter':
@@ -360,8 +368,6 @@ class TerminalStateManager:
 
     # Thread to handle writing the trap
     def start_automatic_trap_writing(self):
-        user_input_delay = self.config.get("USER_INPUT_DELAY")
-
         self.is_auto_typing_traps = True
 
         trap_list = self.traps
@@ -369,22 +375,18 @@ class TerminalStateManager:
             trap_list = self.all_traps
 
         for trap in trap_list:
-            self.writing_queue.append(deque([trap[0], trap[1], 'enter']))
+            self.writing_queue.append(deque([trap[0], trap[1]]))
 
         # Get rid of what the user was typing
-        self.keyboard_manager.press_key('enter')
+        self.press_and_wait('enter')
         while len(self.writing_queue) > 0:
             # Write is a list of keys to write
             write = self.writing_queue.popleft()
 
             for key in write:
-                self.keyboard_manager.press_key(key)
-                self.keyboard_manager.callback(self.on_callback)
-                # Wait until the callback is called
-                self.callback_event.wait()
-                self.callback_event.clear()
-            self.keyboard_manager.press_key('enter')
+                self.press_and_wait(key)
 
+            self.press_and_wait('enter')
         time_since_start_of_trap_thread = time() - self.start_time
         time_left = self.config.get("TRAP_TIMER_DURATION") - time_since_start_of_trap_thread
         # If there is time to return the terminal back to normal
@@ -393,20 +395,12 @@ class TerminalStateManager:
             try:
                 # Finish off user typed buffer that is not done from the terminal
                 for i in range(len(self.to_be_written)):
-                    self.keyboard_manager.press_key(self.to_be_written[i])
-
-                    self.keyboard_manager.callback(self.on_callback)
-                    # Wait until the callback is called
-                    self.callback_event.wait()
-                    self.callback_event.clear()
+                    self.press_and_wait(self.to_be_written[i])
             except:
-                sleep(user_input_delay)
+                sleep(0.01)
 
         self.is_auto_typing_traps = False
     
-        
-    def on_callback(self):
-        self.callback_event.set()
 
     def clear_all_buffers(self):
         self.clear_to_be_written_buffer()
