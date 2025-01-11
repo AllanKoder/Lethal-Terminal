@@ -1,10 +1,10 @@
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-from rich.align import Align
 from rich.table import Table
 from rich.columns import Columns
 from .config import ConfigSingleton
+from .event import EventType
 
 class TerminalUI:
     def __init__(self, state_manager):
@@ -48,7 +48,11 @@ class TerminalUI:
         self.console.print(columns)
 
         # Print the event
-        event_text = Text(self.state_manager.event, style="bold red")
+        event_text = ""
+        if self.state_manager.event.type == EventType.SUCCESS:
+            event_text = Text(self.state_manager.event.text, style="bold bright_green")
+        elif self.state_manager.event.type == EventType.FAIL:
+            event_text = Text(self.state_manager.event.text, style="bold red1")
         self.console.print(event_text)
 
     def create_player_table(self):

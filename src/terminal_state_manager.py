@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 from collections import deque
 from time import sleep, time
 import keyboard
@@ -8,7 +8,7 @@ import threading
 from .traps import is_valid_trap
 from .keyboard_manager import keyboard_setup
 from .config import ConfigSingleton
-from .terminal_ui import TerminalUI
+from .event import Event, EventType
 
 class State(Enum):
     GAMEPLAY = 0
@@ -41,7 +41,7 @@ class TerminalStateManager:
         self.is_running_manager = False
 
         # UI
-        self.event = ""
+        self.event = Event("", EventType.NONE)
 
         # Timer for the trap thread
         self.start_time = time()
@@ -61,6 +61,9 @@ class TerminalStateManager:
     def set_refresh_callback(self, callback):
         self.refresh_callback = callback
 
+    def set_event(self, text: str, type: Optional[EventType] = EventType.SUCCESS):
+        self.event.text = text
+        self.event.type = type
 
     # Check if the last few characters in the buffer have been typed to the array
     def is_typed(self, array: List[str]):
@@ -175,11 +178,11 @@ class TerminalStateManager:
             if self.want_all_traps: # Don't write if we disabled all traps
                 self.writing_queue.clear()
                 self.want_all_traps = False
-                self.event = "Disabled typing all traps"
+                self.set_event("Disabled typing all traps")
 
             elif not self.want_all_traps:
                 self.want_all_traps = True
-                self.event = "Enabled typing all traps"
+                self.set_event("Enabled typing all traps")
 
             if self.refresh_callback:
                 self.refresh_callback()
@@ -197,7 +200,7 @@ class TerminalStateManager:
         self.listen_to_keyboard(True)
 
     def handle_adding_trap_keyboard(self):
-        if len(self.buffer) >= 1:
+        if len(self.buffer) >= 1 and len(self.buffer[-1]) == 1:
             self.current_trap.append(self.buffer[-1])
 
             # Handle delete
@@ -211,9 +214,9 @@ class TerminalStateManager:
             trap = (self.current_trap[0] + self.current_trap[1])
             if is_valid_trap(trap) and trap not in self.traps:
                 self.traps.append(trap)
-                self.event = f"Added trap: {trap}"
+                self.set_event(f"Added trap: {trap}")
             else:
-                self.event = f"Cannot add trap: {trap}"
+                self.set_event(f"Cannot add trap: {trap}", EventType.FAIL)
 
             # Return to Terminal State
             self.terminal_state()
@@ -228,7 +231,7 @@ class TerminalStateManager:
         self.listen_to_keyboard(True)
 
     def handle_delete_trap_keyboard(self):
-        if len(self.buffer) >= 1:
+        if len(self.buffer) >= 1 and len(self.buffer[-1]) == 1:
             self.current_trap.append(self.buffer[-1])
 
             # Handle delete
@@ -241,9 +244,9 @@ class TerminalStateManager:
                 trap = (self.current_trap[0] + self.current_trap[1])
                 if is_valid_trap(trap) and trap in self.traps:
                     self.traps.remove(trap)
-                    self.event = f"Removed trap: {trap}"
+                    self.set_event(f"Removed trap: {trap}")
                 else:
-                    self.event = f"Cannot remove trap: {trap}"
+                    self.set_event(f"Cannot remove trap: {trap}", EventType.FAIL)
                 # Return to Terminal State
                 self.terminal_state()
 
@@ -274,7 +277,7 @@ class TerminalStateManager:
                 # Send the line that was desired to be typed to the writing queue
                 self.writing_queue.appendleft(deque(self.to_be_written))
 
-                self.event = f"Will type: {self.keyboard_manager.keys_to_string(self.to_be_written)}"
+                self.set_event(f"Will type: {self.keyboard_manager.keys_to_string(self.to_be_written)}")
 
                 if self.refresh_callback():
                     self.refresh_callback()
@@ -328,7 +331,7 @@ class TerminalStateManager:
                     for k in to_type:
                         self.insert_event_to_be_written(k)
                 else:
-                    self.event = f"No player number: {value}"
+                    self.set_event(f"No player number: {value}", EventType.FAIL)
                 self.terminal_state()
 
         self.handle_control_c()
@@ -362,7 +365,7 @@ class TerminalStateManager:
                     for k in to_type:
                         self.insert_event_to_be_written(k)
                 else:
-                    self.event = f"No radar number: {value}"
+                    self.set_event(f"No radar number: {value}", EventType.FAIL)
                 self.terminal_state()
 
         self.handle_control_c()
