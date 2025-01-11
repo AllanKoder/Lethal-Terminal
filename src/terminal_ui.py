@@ -48,8 +48,7 @@ class TerminalUI:
         self.console.print(columns)
 
         # Print the event
-        event = "test event, oh no!"
-        event_text = Text(event, style="bold red")
+        event_text = Text(self.state_manager.event, style="bold red")
         self.console.print(event_text)
 
     def create_player_table(self):

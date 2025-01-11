@@ -43,10 +43,21 @@ class KeyboardManager:
         # Wait for a keyboard event
         keyboard.wait()
 
+    def keys_to_string(self, array):
+        output = ""
+        for k in array:
+            if len(k) == 1:
+                output += k
+            else:
+                if k == 'space':
+                    output += " "
+        return output
+
 # Decorator for keyboard setup
 def keyboard_setup(func):
     def decorator(self):
         keyboard.unhook_all()
+        self.buffer.clear()
         func(self)
         if self.refresh_callback:
             self.refresh_callback()

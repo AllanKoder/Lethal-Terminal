@@ -40,6 +40,9 @@ class TerminalStateManager:
         self.is_auto_typing_traps = False # Is the computer typing the traps right now?
         self.is_running_manager = False
 
+        # UI
+        self.event = ""
+
         # Timer for the trap thread
         self.start_time = time()
 
@@ -171,9 +174,16 @@ class TerminalStateManager:
         elif self.is_typed(['q', 'q']):
             if self.want_all_traps: # Don't write if we disabled all traps
                 self.writing_queue.clear()
-            self.want_all_traps = not self.want_all_traps
+                self.want_all_traps = False
+                self.event = "Disabled typing all traps"
+
+            elif not self.want_all_traps:
+                self.want_all_traps = True
+                self.event = "Enabled typing all traps"
+
             if self.refresh_callback:
                 self.refresh_callback()
+                
             self.terminal_state()
         
         # Control + C wipes buffer
@@ -187,20 +197,23 @@ class TerminalStateManager:
         self.listen_to_keyboard(True)
 
     def handle_adding_trap_keyboard(self):
-        self.current_trap.append(self.buffer[-1])
+        if len(self.buffer) >= 1:
+            self.current_trap.append(self.buffer[-1])
 
-        # Handle delete
-        if self.buffer[-1] == 'backspace':
-            self.current_trap.pop()
-            if len(self.current_trap) > 0:
+            # Handle delete
+            if self.buffer[-1] == 'backspace':
                 self.current_trap.pop()
+                if len(self.current_trap) > 0:
+                    self.current_trap.pop()
 
-        print(self.current_trap)
 
         if (len(self.current_trap) == 2):
             trap = (self.current_trap[0] + self.current_trap[1])
             if is_valid_trap(trap) and trap not in self.traps:
                 self.traps.append(trap)
+                self.event = f"Added trap: {trap}"
+            else:
+                self.event = f"Cannot add trap: {trap}"
 
             # Return to Terminal State
             self.terminal_state()
@@ -215,27 +228,30 @@ class TerminalStateManager:
         self.listen_to_keyboard(True)
 
     def handle_delete_trap_keyboard(self):
-        self.current_trap.append(self.buffer[-1])
+        if len(self.buffer) >= 1:
+            self.current_trap.append(self.buffer[-1])
 
-        # Handle delete
-        if self.buffer[-1] == 'backspace':
-            self.current_trap.pop()
-            if len(self.current_trap) > 0:
+            # Handle delete
+            if self.buffer[-1] == 'backspace':
                 self.current_trap.pop()
+                if len(self.current_trap) > 0:
+                    self.current_trap.pop()
 
-        if (len(self.current_trap) == 2):
-            trap = (self.current_trap[0] + self.current_trap[1])
-            if is_valid_trap(trap) and trap in self.traps:
-                self.traps.remove(trap)
-
-            # Return to Terminal State
-            self.terminal_state()
+            if (len(self.current_trap) == 2):
+                trap = (self.current_trap[0] + self.current_trap[1])
+                if is_valid_trap(trap) and trap in self.traps:
+                    self.traps.remove(trap)
+                    self.event = f"Removed trap: {trap}"
+                else:
+                    self.event = f"Cannot remove trap: {trap}"
+                # Return to Terminal State
+                self.terminal_state()
 
         self.handle_control_c()
 
     def press_key_and_wait(self, key_event):
         self.keyboard_manager.press_key(key_event)
-        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.05 + 0.003 # Added processing speed estimate
+        user_input_delay = self.config.get("USER_INPUT_DELAY")*2 # Added processing speed estimate
         sleep(user_input_delay)
 
     def insert_event_to_be_written(self, key_event: str):
@@ -257,6 +273,12 @@ class TerminalStateManager:
             if key_event == 'enter':
                 # Send the line that was desired to be typed to the writing queue
                 self.writing_queue.appendleft(deque(self.to_be_written))
+
+                self.event = f"Will type: {self.keyboard_manager.keys_to_string(self.to_be_written)}"
+
+                if self.refresh_callback():
+                    self.refresh_callback()
+
                 self.clear_to_be_written_buffer()
         
         # Clean the to_be_written buffer, we don't want to save deletes, since it is just removing elements from the buffer
@@ -273,9 +295,10 @@ class TerminalStateManager:
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
             return
-
-        event = self.buffer[-1]
-        self.insert_event_to_be_written(event)
+        
+        if len(self.buffer) >= 1:
+            event = self.buffer[-1]
+            self.insert_event_to_be_written(event)
 
     @keyboard_setup
     def switch_user_state(self):        
@@ -287,23 +310,26 @@ class TerminalStateManager:
             for k in ['enter', 's','w','i','t','c','h','enter']:
                 self.insert_event_to_be_written(k)
             self.terminal_state()
-        number = self.buffer[-1]
-        if number.isdigit():
-            value = int(number)-1
-            players = self.config.get("PLAYERS")
-            player = None
-            
-            if 0 <= value < len(players):
-                player = players[value]
-            print("Get Player:", player)
 
-            if player:
-                to_type = ['enter', 's','w','i','t','c','h','space']
-                to_type.extend(list(player))
-                to_type.append('enter')
-                for k in to_type:
-                    self.insert_event_to_be_written(k)
-            self.terminal_state()
+        if len(self.buffer) >= 1:
+            number = self.buffer[-1]
+            if number.isdigit():
+                value = int(number)-1
+                players = self.config.get("PLAYERS")
+                player = None
+                
+                if 0 <= value < len(players):
+                    player = players[value]
+
+                if player:
+                    to_type = ['enter', 's','w','i','t','c','h','space']
+                    to_type.extend(list(player))
+                    to_type.append('enter')
+                    for k in to_type:
+                        self.insert_event_to_be_written(k)
+                else:
+                    self.event = f"No player number: {value}"
+                self.terminal_state()
 
         self.handle_control_c()
 
@@ -316,25 +342,28 @@ class TerminalStateManager:
         self.state = State.PING_RADAR
         self.listen_to_keyboard(True)
     def handle_radar_command(self, command: str):
-        number = self.buffer[-1]
-        if number.isdigit():
-            value = int(number)-1
-            radars = self.config.get("RADARS")
-            radar = None
-            
-            if 0 <= value < len(radars):
-                radar = radars[value]
-            print("Get Radar:", radar)
+        if len(self.buffer) >= 1:
+            number = self.buffer[-1]
+            if number.isdigit():
+                value = int(number)-1
+                radars = self.config.get("RADARS")
+                radar = None
+                
+                if 0 <= value < len(radars):
+                    radar = radars[value]
+                print("Get Radar:", radar)
 
-            if radar:
-                to_type = ['enter']
-                to_type.extend(list(command))
-                to_type.append('space')
-                to_type.extend(list(radar))
-                to_type.append('enter')
-                for k in to_type:
-                    self.insert_event_to_be_written(k)
-            self.terminal_state()
+                if radar:
+                    to_type = ['enter']
+                    to_type.extend(list(command))
+                    to_type.append('space')
+                    to_type.extend(list(radar))
+                    to_type.append('enter')
+                    for k in to_type:
+                        self.insert_event_to_be_written(k)
+                else:
+                    self.event = f"No radar number: {value}"
+                self.terminal_state()
 
         self.handle_control_c()
     
@@ -356,12 +385,13 @@ class TerminalStateManager:
             self.terminal_state()
             return
 
-        event = self.buffer[-1]
-        self.insert_event_to_be_written(event)
+        if len(self.buffer) >= 1:
+            event = self.buffer[-1]
+            self.insert_event_to_be_written(event)
 
-        # Finished writing
-        if event == 'enter':
-            self.terminal_state()
+            # Finished writing
+            if event == 'enter':
+                self.terminal_state()
 
     def clear_to_be_written_buffer(self):
         self.to_be_written.clear()
