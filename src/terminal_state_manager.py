@@ -22,7 +22,7 @@ class State(Enum):
     PING_RADAR = 8
 
 class TerminalStateManager:
-    def __init__(self, keyboard_manager):
+    def __init__(self, keyboard_manager, logger):
         self.buffer = deque([]) # What the keyboard has typed
         self.to_be_written = deque([]) # What the user is about to write before the interuption by the automated trap system
         self.writing_queue = deque([]) # The things that are to be typed
@@ -49,13 +49,15 @@ class TerminalStateManager:
         # Config
         self.config = ConfigSingleton()
 
-        # Keyboard
+        # Dependencies
         self.keyboard_manager = keyboard_manager
+        self.logger = logger
 
         self.refresh_callback = None
         # The current state
         self.state = State.GAMEPLAY
 
+        self.logger.debug("TerminalStateManager initialized.")
         self.gameplay_state()
     
     def set_refresh_callback(self, callback):
@@ -77,7 +79,7 @@ class TerminalStateManager:
         
         return True
 
-    def handle_keyboard_logic(self):
+    def handle_keyboard_logic(self) -> None:
         match self.state:            
             case State.GAMEPLAY:
                 self.handle_gameplay_keyboard()
@@ -110,7 +112,7 @@ class TerminalStateManager:
         # No need for more than 50 characters in reality
         if len(self.buffer) > 50:
             self.buffer.popleft()
-
+    
     def listen_to_keyboard(self, suppress):
         # If is auto typing, suppress the user input
         keyboard.unhook_all()
@@ -256,6 +258,7 @@ class TerminalStateManager:
         # Add the latest event to the to_be_written list
         if len(key_event) == 1 or key_event in ['space', 'backspace']:
             self.to_be_written.append(key_event)
+            self.logger.debug(f"To_be_written buffer is {self.to_be_written}")
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
             # handle the inputs given
@@ -394,6 +397,7 @@ class TerminalStateManager:
     # Thread to handle writing the trap
     def start_automatic_trap_writing(self):
         self.is_auto_typing_traps = True
+        self.logger.debug("Started automatic trap writing")
 
         trap_list = self.traps
         if self.want_all_traps:
@@ -424,6 +428,7 @@ class TerminalStateManager:
             except:
                 sleep(0.01)
 
+        self.logger.debug("Ended automatic trap writing")
         self.is_auto_typing_traps = False
     
 
@@ -432,10 +437,10 @@ class TerminalStateManager:
         self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self):
+        self.is_running_manager = True
         ideal_timer = self.config.get("TRAP_TIMER_DURATION")
 
         initial_call = True
-        self.is_running_manager = True
         while self.run_auto_trap_thread:
             if self.state is not State.GAMEPLAY:
                 self.start_time = time()

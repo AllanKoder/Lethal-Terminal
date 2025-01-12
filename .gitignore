@@ -9,8 +9,9 @@ __pycache__
 
 # Testing
 tester.txt
+lethal_terminal.log
 
 # Build (pyinstaller)
 build/
 dist/
-run.spec
+lethal_terminal.spec
