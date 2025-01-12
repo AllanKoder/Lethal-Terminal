@@ -145,6 +145,7 @@ class TerminalStateManager:
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
             self.terminal_state()
+            self.insert_event_to_be_written('enter')
 
     @keyboard_setup()
     def terminal_state(self) -> None:
@@ -188,7 +189,7 @@ class TerminalStateManager:
         # Set all the traps
         elif self.is_typed(['q', 'q']):
            self.toggling_all_traps()
-        
+       
         # Control + C wipes buffer
         self.handle_control_c()
 
@@ -271,8 +272,8 @@ class TerminalStateManager:
         Since we timed the key presses, we can update the writing_queue buffer and get live changes while the traps are being written
         '''
         self.keyboard_manager.press_key(key_event)
-        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.1 # Added processing speed estimate
-        sleep(user_input_delay)
+        keyboard_delay = self.config.get("KEYBOARD_INPUT_DELAY")*1.1 # Added processing speed estimate
+        sleep(keyboard_delay)
 
     def insert_event_to_be_written(self, key_event: str) -> None:
         '''Handling typing a key.
@@ -303,7 +304,6 @@ class TerminalStateManager:
                 # Send the line that was desired to be typed to the writing queue
                 self.to_be_written.append('enter')
                 self.writing_queue.appendleft(deque(self.to_be_written))
-
 
                 self.clear_to_be_written_buffer()
         
@@ -460,6 +460,7 @@ class TerminalStateManager:
 
     def clear_all_buffers(self) -> None:
         self.clear_to_be_written_buffer()
+        self.buffer.clear()
         self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self) -> None:
