@@ -1,5 +1,5 @@
 from time import sleep
-from typing import Callable
+from typing import Callable, List
 import keyboard
 import threading
 from collections import deque
@@ -31,7 +31,7 @@ class KeyboardManager:
                 sleep(0.01)
                     
 
-    def press_key(self, key):
+    def press_key(self, key: str):
         with self.lock:
             self.queue.append(key)
     
@@ -44,9 +44,9 @@ class KeyboardManager:
         # Wait for a keyboard event
         keyboard.wait()
 
-    def keys_to_string(self, array):
+    def keys_to_string(self, key_array: List[str]):
         output = ""
-        for k in array:
+        for k in key_array:
             if len(k) == 1:
                 output += k
             else:

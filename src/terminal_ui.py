@@ -16,19 +16,19 @@ class TerminalUI:
         self.players = self.config.get("PLAYERS")
         self.radars = self.config.get("RADARS")
 
-    def render(self):
+    def render(self) -> None:
         """Initial render of the terminal UI."""
         self.console.clear()
         title = Panel("[bold red]LETHAL[/bold red] [green]TERMINAL[/green]", border_style="red")
         self.console.print(title)
         self.display_content()
 
-    def rerender(self):
+    def rerender(self) -> None:
         """Update the terminal UI without clearing everything."""
         self.console.clear()
         self.display_content()
 
-    def display_content(self):
+    def display_content(self) -> None:
         """Display all content including tables and state."""
         # State display
         state_text = Text(f"\nState: {self.state_manager.state.name}", style="bold yellow")
@@ -55,7 +55,7 @@ class TerminalUI:
             event_text = Text(self.state_manager.event.text, style="bold red1")
         self.console.print(event_text)
 
-    def create_player_table(self):
+    def create_player_table(self) -> None:
         """Create a table for players."""
         player_table = Table(title="Players")
         player_table.add_column("No.", justify="center")
@@ -66,7 +66,7 @@ class TerminalUI:
         
         return player_table
 
-    def create_radar_table(self):
+    def create_radar_table(self) -> None:
         """Create a table for radars."""
         radar_table = Table(title="Radars")
         radar_table.add_column("No.", justify="center")

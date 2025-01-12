@@ -35,8 +35,10 @@ def main():
         # Initial render of the UI
         terminal_ui.render()
 
+        # Keep the program alive
         keyboard_manager.wait()
     finally:
+        # Stop the threads
         keyboard_manager.stop()
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@ import json
 import os
 from typing import Optional, Any
 
+# A class for reading from the JSON
 class ConfigSingleton:
     _instance = None
     _config = None
@@ -22,7 +23,7 @@ class ConfigSingleton:
         with open(config_file, 'r') as f:
             self._config = json.load(f)
 
-    def get(self, key: str, default: Any = None):
+    def get(self, key: str, default: Any = None) -> Any:
         return self._config.get(key, default)
 
 

@@ -1,15 +1,17 @@
 from enum import Enum
-from typing import List, Optional
+from typing import Callable, List, Optional
 from collections import deque
 from time import sleep, time
 import keyboard
 import threading
+from logging import Logger
 
 from .traps import is_valid_trap
-from .keyboard_manager import keyboard_setup
+from .keyboard_manager import keyboard_setup, KeyboardManager
 from .config import ConfigSingleton
 from .event import Event, EventType
 
+# Representing the states which the vim motions is in
 class State(Enum):
     GAMEPLAY = 0
     TERMINAL = 1
@@ -21,8 +23,9 @@ class State(Enum):
     FLASH_RADAR = 7
     PING_RADAR = 8
 
+# The brain behind the whole operation
 class TerminalStateManager:
-    def __init__(self, keyboard_manager, logger):
+    def __init__(self, keyboard_manager: KeyboardManager, logger: Logger):
         self.buffer = deque([]) # What the keyboard has typed
         self.to_be_written = deque([]) # What the user is about to write before the interuption by the automated trap system
         self.writing_queue = deque([]) # The things that are to be typed
@@ -60,15 +63,22 @@ class TerminalStateManager:
         self.logger.debug("TerminalStateManager initialized.")
         self.gameplay_state()
     
-    def set_refresh_callback(self, callback):
+    # Set the function for refreshing the UI
+    def set_refresh_callback(self, callback: Callable) -> None:
         self.refresh_callback = callback
 
-    def set_event(self, text: str, type: Optional[EventType] = EventType.SUCCESS):
+    # Set the event to display
+    def set_event(self, text: str, type: Optional[EventType] = EventType.SUCCESS) -> None:
         self.event.text = text
         self.event.type = type
 
+    # Clear all the things that was about to be written
+    def clear_to_be_written_buffer(self) -> None:
+        self.to_be_written.clear()
+
     # Check if the last few characters in the buffer have been typed to the array
-    def is_typed(self, array: List[str]):
+    def is_typed(self, array: List[str]) -> bool:
+        '''Check if the array of keys has been typed in the user keyboard'''
         if len(self.buffer) < len(array): 
             return False
         
@@ -80,7 +90,8 @@ class TerminalStateManager:
         return True
 
     def handle_keyboard_logic(self) -> None:
-        match self.state:            
+        '''Keyboard logic for all states'''
+        match self.state: 
             case State.GAMEPLAY:
                 self.handle_gameplay_keyboard()
             case State.TERMINAL:
@@ -100,7 +111,9 @@ class TerminalStateManager:
             case State.SWITCH_USER:
                 self.handle_switch_user_keyboard()
             
-    def handle_key_buffer(self, key: str):
+    def handle_key_buffer(self, key: str) -> None:
+        '''Handling the addition of a new keyboard input'''
+
         # Add the key to the buffer
         self.buffer.append(key.name)
         self.handle_keyboard_logic()
@@ -113,28 +126,29 @@ class TerminalStateManager:
         if len(self.buffer) > 50:
             self.buffer.popleft()
     
-    def listen_to_keyboard(self, suppress):
+    def listen_to_keyboard(self, suppress: bool) -> None:
         # If is auto typing, suppress the user input
         keyboard.unhook_all()
         keyboard.on_press(self.handle_key_buffer, suppress=suppress)
 
-    def handle_control_c(self):
+    def handle_control_c(self) -> None:
+        '''Logic for pressing control+c'''
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
 
     @keyboard_setup(False)
-    def gameplay_state(self):
+    def gameplay_state(self) -> None:
         self.state = State.GAMEPLAY
         self.clear_all_buffers() # Stop writing
         self.run_auto_trap_thread = False
 
-    def handle_gameplay_keyboard(self):
+    def handle_gameplay_keyboard(self) -> None:
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
             self.terminal_state()
 
     @keyboard_setup()
-    def terminal_state(self):
+    def terminal_state(self) -> None:
         self.state = State.TERMINAL
         self.clear_to_be_written_buffer() # Clear buffer
         self.run_auto_trap_thread = True
@@ -144,7 +158,7 @@ class TerminalStateManager:
         if self.first_terminal_enter:
             self.first_terminal_enter = False
             self.insert_view_monitor_text()
-    def handle_terminal_keyboard(self):
+    def handle_terminal_keyboard(self) -> None:
         # Enter Gameplay State
         if self.is_typed(['tab', 'tab']):
             self.gameplay_state()
@@ -174,30 +188,31 @@ class TerminalStateManager:
             self.switch_flash_state()
         # Set all the traps
         elif self.is_typed(['q', 'q']):
-            if self.want_all_traps: # Don't write if we disabled all traps
-                self.writing_queue.clear()
-                self.want_all_traps = False
-                self.set_event("Disabled typing all traps")
-
-            elif not self.want_all_traps:
-                self.want_all_traps = True
-                self.set_event("Enabled typing all traps")
-
-            if self.refresh_callback:
-                self.refresh_callback()
-                
-            self.terminal_state()
+           self.toggling_all_traps()
         
         # Control + C wipes buffer
         self.handle_control_c()
 
+    def toggling_all_traps(self):
+        if self.want_all_traps: 
+            self.writing_queue.clear() # Don't write if we disabled all traps
+            self.want_all_traps = False
+            self.set_event("Disabled typing all traps")
+        elif not self.want_all_traps:
+            self.want_all_traps = True
+            self.set_event("Enabled typing all traps")
+
+        if self.refresh_callback:
+            self.refresh_callback()
+        self.terminal_state()
 
     @keyboard_setup()
-    def add_trap_state(self):
+    def add_trap_state(self) -> None:
         self.state = State.ADD_TRAP
         self.current_trap.clear()
 
-    def handle_adding_trap_keyboard(self):
+    def handle_adding_trap_keyboard(self) -> None:
+        '''Logic for adding a trap (a1, b2) to the trap list'''
         if len(self.buffer) >= 1 and len(self.buffer[-1]) == 1:
             self.current_trap.append(self.buffer[-1])
 
@@ -223,11 +238,12 @@ class TerminalStateManager:
 
 
     @keyboard_setup()
-    def remove_trap_state(self):
+    def remove_trap_state(self) -> None:
         self.state = State.DELETE_TRAP
         self.current_trap.clear()
 
-    def handle_delete_trap_keyboard(self):
+    def handle_delete_trap_keyboard(self) -> None:
+        '''Logic for removing a trap (a1, b2) from the trap list'''
         if len(self.buffer) >= 1 and len(self.buffer[-1]) == 1:
             self.current_trap.append(self.buffer[-1])
 
@@ -249,12 +265,21 @@ class TerminalStateManager:
 
         self.handle_control_c()
 
-    def press_key_and_wait(self, key_event):
+    def press_key_and_wait(self, key_event: str) -> None:
+        '''A function to pause the caller by the estimated amount of time the keypress would take.
+        
+        Timing is important overwise the writing_queue buffer would be overloaded with keys from start_automatic_trap_writing thread
+        Since we timed the key presses, we can update the writing_queue buffer and get live changes while the traps are being written
+        '''
         self.keyboard_manager.press_key(key_event)
-        user_input_delay = self.config.get("USER_INPUT_DELAY")*2 # Added processing speed estimate
+        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.1 # Added processing speed estimate
         sleep(user_input_delay)
 
-    def insert_event_to_be_written(self, key_event: str):
+    def insert_event_to_be_written(self, key_event: str) -> None:
+        '''Handling typing a key.
+        
+        If the system is not typing anything, just type the key and save it to the buffer
+        When the system is typing, there is nothing typed. Afterwards, state is recovered by typing the to_be_written buffer'''
         # Add the latest event to the to_be_written list
         if len(key_event) == 1 or key_event in ['space', 'backspace']:
             self.to_be_written.append(key_event)
@@ -267,7 +292,6 @@ class TerminalStateManager:
             # Clear the buffer since it is a newline
             if key_event == 'enter':
                 self.clear_to_be_written_buffer()
-            
         
         # System is typing traps
         else:
@@ -291,7 +315,7 @@ class TerminalStateManager:
                 self.to_be_written.pop()
         
     @keyboard_setup()
-    def insert_text_state(self):
+    def insert_text_state(self) -> None:
         self.state = State.INSERT_TEXT
     def handle_insert_text_keyboard(self):
         if self.is_typed(['ctrl', 'c']):
@@ -303,9 +327,9 @@ class TerminalStateManager:
             self.insert_event_to_be_written(event)
 
     @keyboard_setup()
-    def switch_user_state(self):        
+    def switch_user_state(self) -> None:        
         self.state = State.SWITCH_USER
-    def handle_switch_user_keyboard(self):
+    def handle_switch_user_keyboard(self) -> None:
         # Switch
         if self.is_typed(['s']):
             for k in ['enter', 's','w','i','t','c','h','enter']:
@@ -314,6 +338,7 @@ class TerminalStateManager:
 
         if len(self.buffer) >= 1:
             number = self.buffer[-1]
+            # Get the number chosen
             if number.isdigit():
                 value = int(number)-1
                 players = self.config.get("PLAYERS")
@@ -335,12 +360,12 @@ class TerminalStateManager:
         self.handle_control_c()
 
     @keyboard_setup()
-    def switch_flash_state(self):        
+    def switch_flash_state(self) -> None:        
         self.state = State.FLASH_RADAR
     @keyboard_setup()
-    def switch_ping_state(self):        
+    def switch_ping_state(self) -> None:        
         self.state = State.PING_RADAR
-    def handle_radar_command(self, command: str):
+    def handle_radar_command(self, command: str) -> None:
         if len(self.buffer) >= 1:
             number = self.buffer[-1]
             if number.isdigit():
@@ -350,7 +375,6 @@ class TerminalStateManager:
                 
                 if 0 <= value < len(radars):
                     radar = radars[value]
-                print("Get Radar:", radar)
 
                 if radar:
                     to_type = ['enter']
@@ -366,19 +390,19 @@ class TerminalStateManager:
 
         self.handle_control_c()
     
-    def insert_view_monitor_text(self):
+    def insert_view_monitor_text(self) -> None:
         for k in ['enter','v','i','e','w','space','m','o','n','i','t','o','r','enter']:
             self.insert_event_to_be_written(k)
 
     @keyboard_setup()
-    def transmit_text_state(self):
+    def transmit_text_state(self) -> None:
         self.to_be_written.clear()
         for k in ['enter','t','r','a','n','s','m','i','t','space']:
             self.insert_event_to_be_written(k)
         
         self.state = State.TRANSMIT_TEXT
 
-    def handle_suffix_text_enter_keyboard(self):
+    def handle_suffix_text_enter_keyboard(self) -> None:
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
             return
@@ -391,11 +415,9 @@ class TerminalStateManager:
             if event == 'enter':
                 self.terminal_state()
 
-    def clear_to_be_written_buffer(self):
-        self.to_be_written.clear()
-
     # Thread to handle writing the trap
-    def start_automatic_trap_writing(self):
+    def start_automatic_trap_writing(self) -> None:
+        '''Writes the traps automatically from the writing_queue'''
         self.is_auto_typing_traps = True
         self.logger.debug("Started automatic trap writing")
 
@@ -432,11 +454,11 @@ class TerminalStateManager:
         self.is_auto_typing_traps = False
     
 
-    def clear_all_buffers(self):
+    def clear_all_buffers(self) -> None:
         self.clear_to_be_written_buffer()
         self.writing_queue.clear()
 
-    def automatic_trap_writing_manager(self):
+    def automatic_trap_writing_manager(self) -> None:
         self.is_running_manager = True
         ideal_timer = self.config.get("TRAP_TIMER_DURATION")
 
