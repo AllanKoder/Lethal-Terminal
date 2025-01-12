@@ -65,10 +65,37 @@ It will take some time to practice and get used to using this tool. I recommend 
 1. You got the basics down, now mess around with the other states!
 
 ## Development
+❤️ First of all, thank you for considering development with this project 
 
-debugging
+### Getting Started
 
-log levels
+> Optional, but recommended: Set up a python virtual environment `python -m venv .`
+
+To get started with development, install the required pip libraries:
+```sh
+pip install -r requirements.txt
+```
+
+#### Running the code
+Then, you can running the program as follows:
+```sh
+python letha_terminal.py
+```
+
+#### Debugging
+
+Since the terminal is being used as the UI with Rich, we use logging to debug the application. In the `config.json`, you can set your logging level to the respective numerical value, ideally `10` for debugging
+
+> https://docs.python.org/3/library/logging.html#logging-levels
+
+The logs will be located in `lethal_terminal.log`
+
+#### Building
+
+Building the executable
+```sh
+pyinstaller.exe .\lethal_terminal.py --icon .\assets\lethal_terminal.ico
+```
 
 ## Known Issues
 
