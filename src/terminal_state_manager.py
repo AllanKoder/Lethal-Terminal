@@ -188,9 +188,7 @@ class TerminalStateManager:
         # Set all the traps
         elif self.is_typed(['q', 'q']):
            self.toggling_all_traps()
-        elif self.is_typed(['b', 'b']):
-            self.buy_walkie_talkie()
-        
+       
         # Control + C wipes buffer
         self.handle_control_c()
 
@@ -205,11 +203,6 @@ class TerminalStateManager:
 
         if self.refresh_callback:
             self.refresh_callback()
-        self.terminal_state()
-
-    def buy_walkie_talkie(self):
-        for k in ['enter', 'b', 'u', 'y', 'space', 'w','a','l','k','i','e','enter']:
-            self.insert_event_to_be_written(k)
         self.terminal_state()
 
     @keyboard_setup()
@@ -310,7 +303,6 @@ class TerminalStateManager:
                 # Send the line that was desired to be typed to the writing queue
                 self.to_be_written.append('enter')
                 self.writing_queue.appendleft(deque(self.to_be_written))
-
 
                 self.clear_to_be_written_buffer()
         
@@ -467,6 +459,7 @@ class TerminalStateManager:
 
     def clear_all_buffers(self) -> None:
         self.clear_to_be_written_buffer()
+        self.buffer.clear()
         self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self) -> None:
