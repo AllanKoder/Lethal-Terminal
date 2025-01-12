@@ -6,7 +6,13 @@
   <img src="./assets/lethal_terminal.ico" alt="Lethal Terminal icon" />
 </p>
 
-## Features:
+## Download
+
+To download the executable, download the zip from (insert link).
+
+Or you can use pyinstaller to install the executable yourself.
+
+## Features
 - Automatically typing all the mines and turrets every 5 seconds (configurable)
 - Using Vim-like motions to switch between different states: ex: adding traps, removing, inputting text.
 - Macros for:
@@ -15,19 +21,32 @@
     - flashing radar
     - transmitting messages
     - view monitor
-    - purchasing a single walkie talkie
 
 <p align="center" style="padding: 20px">
-  <img src="./assets/terminal_gameplay.png" alt="Lethal Terminal icon" />
+  <img src="./assets/gameplay.gif" alt="Lethal Terminal Gameplay" />
+  <br>
+  <i>Gameplay GIF</i>
+</p>
+
+<p align="center" style="padding: 20px">
+  <img src="./assets/terminal_gameplay.gif" alt="Lethal Terminal Gameplay" />
+  <br>
+  <i>Terminal UI GIF</i>
+</p>
+
+
+<p align="center" style="padding: 20px">
+  <img src="./assets/terminal_gameplay.png" alt="Lethal Terminal UI Dark Mode" />
   <br>
   <i>Terminal UI to display state</i>
 </p>
 
 <p align="center" style="padding: 20px">
-  <img src="./assets/light_mode.png" alt="Lethal Terminal icon" />
+  <img src="./assets/light_mode.png" alt="Lethal Terminal UI Light Mode" />
   <br>
   <i>Light mode</i>
 </p>
+
 
 
 ## Guide (How to Use)
