@@ -5,8 +5,6 @@ from src.config import ConfigSingleton
 import logging
 
 def main():
-    # Keyboard operations
-    keyboard_manager = KeyboardManager()
     config = ConfigSingleton()
 
     # Configure logging
@@ -17,6 +15,9 @@ def main():
         handlers=[file_handler]
     )
     logger = logging.getLogger("Lethal Terminal")
+
+    # Keyboard operations
+    keyboard_manager = KeyboardManager(logger)
 
     try:
         # Initialize TerminalStateManager

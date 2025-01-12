@@ -26,6 +26,7 @@ class State(Enum):
 # The brain behind the whole operation
 class TerminalStateManager:
     def __init__(self, keyboard_manager: KeyboardManager, logger: Logger):
+        # Keyboard buffers
         self.buffer = deque([]) # What the keyboard has typed
         self.to_be_written = deque([]) # What the user is about to write before the interuption by the automated trap system
         self.writing_queue = deque([]) # The things that are to be typed
@@ -45,19 +46,17 @@ class TerminalStateManager:
 
         # UI
         self.event = Event("", EventType.NONE)
+        self.refresh_callback = None # Refreshing UI callback
 
         # Timer for the trap thread
         self.start_time = time()
 
-        # Config
-        self.config = ConfigSingleton()
-
         # Dependencies
         self.keyboard_manager = keyboard_manager
         self.logger = logger
+        self.config = ConfigSingleton() # Config
 
-        self.refresh_callback = None
-        # The current state
+        # The Current State
         self.state = State.GAMEPLAY
 
         self.logger.debug("TerminalStateManager initialized.")
@@ -283,7 +282,7 @@ class TerminalStateManager:
         # Add the latest event to the to_be_written list
         if len(key_event) == 1 or key_event in ['space', 'backspace']:
             self.to_be_written.append(key_event)
-            self.logger.debug(f"To_be_written buffer is {self.to_be_written}")
+            self.logger.debug(f"to_be_written buffer is {self.to_be_written}")
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
             # handle the inputs given
@@ -348,6 +347,8 @@ class TerminalStateManager:
                     player = players[value]
 
                 if player:
+                    self.to_be_written.clear()
+
                     to_type = ['enter', 's','w','i','t','c','h','space']
                     to_type.extend(list(player))
                     to_type.append('enter')
@@ -377,6 +378,8 @@ class TerminalStateManager:
                     radar = radars[value]
 
                 if radar:
+                    self.to_be_written.clear()
+
                     to_type = ['enter']
                     to_type.extend(list(command))
                     to_type.append('space')
@@ -391,6 +394,7 @@ class TerminalStateManager:
         self.handle_control_c()
     
     def insert_view_monitor_text(self) -> None:
+        self.to_be_written.clear()
         for k in ['enter','v','i','e','w','space','m','o','n','i','t','o','r','enter']:
             self.insert_event_to_be_written(k)
 
@@ -459,6 +463,11 @@ class TerminalStateManager:
         self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self) -> None:
+        '''The thread that manages the automatic trap writer
+        
+        Will call the trap writer every TRAP_TIMER_DURATION.
+        If automatic trap writing takes a long time, it is compensated in the timer'''
+
         self.is_running_manager = True
         ideal_timer = self.config.get("TRAP_TIMER_DURATION")
 
@@ -467,6 +476,7 @@ class TerminalStateManager:
             if self.state is not State.GAMEPLAY:
                 self.start_time = time()
 
+                # Need to wait at the first for the user to type 'view monitor'
                 if initial_call:
                     sleep(1)
                     initial_call = False
@@ -474,11 +484,13 @@ class TerminalStateManager:
                 if (len(self.traps) > 0 or self.want_all_traps):
                     thread = threading.Thread(target=self.start_automatic_trap_writing)
                     thread.start()
+                    # wait for the thread to finish
                     thread.join()
 
                 elapsed_time = time() - self.start_time
                 remaining_time = max(0, ideal_timer - elapsed_time)
 
+                # If there is still time left, wait
                 while remaining_time > 0 and self.state is not State.GAMEPLAY:
                     sleep_time = min(0.1, remaining_time)
                     sleep(sleep_time)
