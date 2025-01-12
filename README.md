@@ -19,6 +19,7 @@
 
 <p align="center" style="padding: 20px">
   <img src="./assets/terminal_gameplay.png" alt="Lethal Terminal icon" />
+  <br>
   <i>Terminal UI to display state</i>
 </p>
 
@@ -30,18 +31,19 @@ Getting used to vim controls is tricky at first, here is a chart of the states a
 
 | **State**            | **Description**                                    | **Key Commands**                      |
 |----------------------|----------------------------------------------------|---------------------------------------|
-| **Gameplay**         | The main game state where the user interacts.     | `t + enter` → Terminal                |
-| **Terminal**         | Command input state for various actions.           | `tab + tab` → Gameplay <br> `a` → Add Trap <br> `x` → Remove Trap <br> `i` → Insert Text <br> `s` → Switch User <br> `t` → Transmit Text <br> `v` → View Monitor <br> `p` → Ping Radar <br> `f` → Flash Radar <br> `q + q` → Toggle Traps <br> `b + b` → Buy Walkie Talkie |
-| **Any State Below (except Gameplay)**         |           | `control + c` → Return to **Terminal** state |
+| **Gameplay**         | The main game state where the user interacts.     | `t + enter` → **Terminal**                |
+| **Any State (except Gameplay)**         |           | `control + c` → Return to **Terminal** state |
+| **Terminal**         | Command input state for various actions.           | `tab + tab` → Gameplay <br> `a` → Add Trap <br> `x` → Remove Trap <br> `i` → Insert Text <br> `s` → Switch User <br> `t` → Transmit Text <br> `v` → View Monitor <br> `p` → Ping Radar <br> `f` → Flash Radar <br> `q + q` → Toggle All Traps <br> `b + b` → Buy Walkie Talkie |
 | **Add Trap**         | State for adding a new trap to the trap list.     | Backspace to delete, then enter trap (e.g., a1) |
 | **Remove Trap**      | State for removing a trap from the trap list.     | Backspace to delete, then enter trap (e.g., a1) |
 | **Insert Text**      | State for inserting text into the terminal.        | Any character input followed by `enter` |
 | **Switch User**      | State for switching between users.                 | `s` → types 'switch' <br> `<player number from grid>` → 'switch <player name>' |
 | **Transmit Text**    | State for transmitting a message.                  | Type message and press `enter`       |
-| **View Monitor**     | State for viewing monitor text.                     | Triggered by pressing `v`             |
 | **Ping Radar**       | State for pinging radar.                           |`<radar number from grid>` → 'ping (radar name)'             |
 | **Flash Radar**      | State for flashing radar.                          |`<radar number from grid>` → 'flash (radar name)'             |
-| **Toggle Traps**     | State for toggling all traps on or off.           | Triggered by pressing `q + q`         |
+| **Toggle Traps**     | State for toggling all traps on or off.           | Triggered by pressing `q + q` from **Terminal**         |
+| **View Monitor**     | State for viewing monitor text.                     | Triggered by pressing `v` from **Terminal**             |
+| **Buy Walkie Talkie**     | State for viewing monitor text.                     | Triggered by pressing `b + b` from **Terminal**             |
 
 > Please note that once in any state (except gameplay), pressing  **control + c** will return back to **Terminal** state.
 
@@ -49,14 +51,30 @@ It will take some time to practice and get used to using this tool. I recommend 
 
 ### Starting out tutorial
 
-1. Run the executable
-1. Keep the UI open on one half of the screen and the other hald is a text editor
-1. Press `t+enter` in the text editor to begin `Terminal` state
-1. Mess around with various states like `a` to add a trap
+1. Run the executable, `lethal_terminal.exe`
+    - Ensure that there is a `config.json` file in the same directory
+1. Keep the UI open on one half of the screen and the other half is a text editor
+1. Press `t+enter` in the text editor to begin **Terminal** state
+1. Mess around with various states like `a` to add a trap, in the `Add Trap`
 1. After adding a trap, notice that you will start to type the list of traps automatically
-1. Even while traps are being automatically  
+1. Next, go to `Insert Text` state, by pressing `i` in the **Terminal** State
+    - Start typing whatever you want now
+1. Even while traps are being automatically written, you can still write whatever you want
+    - Experiment with the text insertion
+1. To return from insert text back to **Terminal** state, press `control + c`
+1. You got the basics down, now mess around with the other states!
 
 ## Development
 
 debugging
+
 log levels
+
+## Known Issues
+
+These are the problems which are known but are tricky to fix at the moment:
+
+- Holding down a macro may result in misprints
+    - Example: Holding `s + s` in **Terminal** state will result in inputs like `siwthc` instead of `switch`
+- While the system is automatically typing traps, there is a small chance that your input will be written when it's not supposed to
+    - Example: system types `a1 a2 a3 a4`, user enters `Text` mode and holds down the key `b`, the terminal output may be `a1 a2 ba3 a4`
