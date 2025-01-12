@@ -23,6 +23,13 @@
   <i>Terminal UI to display state</i>
 </p>
 
+<p align="center" style="padding: 20px">
+  <img src="./assets/light_mode.png" alt="Lethal Terminal icon" />
+  <br>
+  <i>Light mode</i>
+</p>
+
+
 ## Guide (How to Use)
 
 Getting used to vim controls is tricky at first, here is a chart of the states and the transition commands between them:
