@@ -5,12 +5,12 @@ from src.config import ConfigSingleton
 import logging
 
 def main():
+    # Keyboard operations
     keyboard_manager = KeyboardManager()
     config = ConfigSingleton()
 
     # Configure logging
     file_handler = logging.FileHandler("lethal_terminal.log")
-    file_handler.setLevel(config.get("LOG_LEVEL"))
     logging.basicConfig(
         level=config.get("LOG_LEVEL"),
         format="%(message)s",
@@ -19,7 +19,6 @@ def main():
     logger = logging.getLogger("Lethal Terminal")
 
     try:
-        
         # Initialize TerminalStateManager
         state_manager = TerminalStateManager(keyboard_manager, logger)
         
