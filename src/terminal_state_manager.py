@@ -145,6 +145,7 @@ class TerminalStateManager:
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
             self.terminal_state()
+            self.insert_event_to_be_written('enter')
 
     @keyboard_setup()
     def terminal_state(self) -> None:
