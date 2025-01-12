@@ -28,18 +28,23 @@ You can also use pyinstaller to install the executable yourself.
   <i>Gameplay GIF</i>
 </p>
 
+<br>
+
 <p align="center" style="padding: 20px">
   <img src="./assets/terminal_gameplay.gif" alt="Lethal Terminal Gameplay" />
   <br>
   <i>Terminal UI GIF</i>
 </p>
 
+<br>
 
 <p align="center" style="padding: 20px">
   <img src="./assets/terminal_gameplay.png" alt="Lethal Terminal UI Dark Mode" />
   <br>
   <i>Terminal UI to display state</i>
 </p>
+
+<br>
 
 <p align="center" style="padding: 20px">
   <img src="./assets/light_mode.png" alt="Lethal Terminal UI Light Mode" />
@@ -57,18 +62,18 @@ Getting used to vim controls is tricky at first, here is a chart of the states a
 
 | **State**            | **Description**                                    | **Key Commands**                      |
 |----------------------|----------------------------------------------------|---------------------------------------|
-| **Gameplay**         | The main game state where the user interacts.     | `t + enter` → **Terminal**                |
+| **Gameplay**         | Normal Lethal Company gameplay happens here     | `t + enter` → **Terminal**                |
 | **Any State (except Gameplay)**         |           | `control + c` → Return to **Terminal** state |
 | **Terminal**         | Command input state for various actions.           | `tab + tab` → Gameplay <br> `a` → Add Trap <br> `x` → Remove Trap <br> `i` → Insert Text <br> `s` → Switch User <br> `t` → Transmit Text <br> `v` → View Monitor <br> `p` → Ping Radar <br> `f` → Flash Radar <br> `q + q` → Toggle All Traps |
-| **Add Trap**         | State for adding a new trap to the trap list.     | Backspace to delete, then enter trap (e.g., a1) |
-| **Remove Trap**      | State for removing a trap from the trap list.     | Backspace to delete, then enter trap (e.g., a1) |
-| **Insert Text**      | State for inserting text into the terminal.        | Any character input followed by `enter` |
-| **Switch User**      | State for switching between users.                 | `s` → types 'switch' <br> `<player number from grid>` → 'switch <player name>' |
-| **Transmit Text**    | State for transmitting a message.                  | Type message and press `enter`       |
-| **Ping Radar**       | State for pinging radar.                           |`<radar number from grid>` → 'ping (radar name)'             |
-| **Flash Radar**      | State for flashing radar.                          |`<radar number from grid>` → 'flash (radar name)'             |
-| **Toggle Traps**     | State for toggling all traps on or off.           | Triggered by pressing `q + q` from **Terminal**         |
-| **View Monitor**     | State for viewing monitor text.                     | Triggered by pressing `v` from **Terminal**             |
+| **Add Trap**         | Add a new trap to the trap list.     | Backspace to delete, then enter trap (e.g., a1) |
+| **Remove Trap**      | Remove a trap from the trap list.     | Backspace to delete, then enter trap (e.g., a1) |
+| **Insert Text**      | Insert text into the terminal.        | Any character input followed by `enter` |
+| **Switch User**      | Switch between users.                 | `s` → types 'switch' <br> `<player number from table>` → 'switch <player name>' |
+| **Transmit Text**    | Transmitting a message.                  | Type message and press `enter`       |
+| **Ping Radar**       | Flashes a specific radar.                           |`<radar number from table>` → 'ping (radar name)'             |
+| **Flash Radar**      | Flashes a specific radar.                          |`<radar number from table>` → 'flash (radar name)'             |
+| **Toggle Traps**     | Toggles writing all possible traps.           | Triggered by pressing `q + q` from **Terminal**         |
+| **View Monitor**     | types 'view monitor'.                     | Triggered by pressing `v` from **Terminal**             |
 > Please note that once in any state (except gameplay), pressing  **control + c** will return back to **Terminal** state.
 
 It will take some time to practice and get used to using this tool. I recommend trying it out on a notepad document before using it in game.
@@ -98,7 +103,7 @@ In the `config.json` file, you can edit various variables around:
 | `TRAP_TIMER_DURATION`    | The duration (in seconds) which automatic trap writing occurs | 5 seconds                          |
 | `LOG_LEVEL`              | The logging level for the application. Only change if you want to debug the application | 20 (WARNING) |
 | `PLAYERS`                | A list of player names for `switching`    | ["player1", "player2", "player3", "player4"] |
-| `RADARS`                | A list of radars for `ping` and `flash`       | ["radar1", "radar2", "radar3", "radar4"] |
+| `RADARS`                 | A list of radars for `ping` and `flash`       | ["radar1", "radar2", "radar3", "radar4"] |
 
 
 ## Development
