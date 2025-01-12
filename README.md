@@ -58,7 +58,7 @@ You can also use pyinstaller to install the executable yourself.
 
 Getting used to vim controls is tricky at first, here is a chart of the states and the transition commands between them:
 
-> Note: 'trap' means a mine, or a turret
+> Note: 'trap' means a mine, a turret, or the spike trap
 
 | **State**            | **Description**                                    | **Key Commands**                      |
 |----------------------|----------------------------------------------------|---------------------------------------|
@@ -121,7 +121,7 @@ pip install -r requirements.txt
 #### Running the code
 Then, you can running the program as follows:
 ```sh
-python letha_terminal.py
+python lethal_terminal.py
 ```
 
 #### Debugging
