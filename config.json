@@ -1,5 +1,5 @@
 {
-    "USER_INPUT_DELAY": 0.020,
+    "KEYBOARD_INPUT_DELAY": 0.020,
     "TRAP_TIMER_DURATION": 5,
     "LOG_LEVEL": 20,
     "PLAYERS": [

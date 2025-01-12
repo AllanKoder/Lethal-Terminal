@@ -271,8 +271,8 @@ class TerminalStateManager:
         Since we timed the key presses, we can update the writing_queue buffer and get live changes while the traps are being written
         '''
         self.keyboard_manager.press_key(key_event)
-        user_input_delay = self.config.get("USER_INPUT_DELAY")*1.1 # Added processing speed estimate
-        sleep(user_input_delay)
+        keyboard_delay = self.config.get("KEYBOARD_INPUT_DELAY")*1.1 # Added processing speed estimate
+        sleep(keyboard_delay)
 
     def insert_event_to_be_written(self, key_event: str) -> None:
         '''Handling typing a key.

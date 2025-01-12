@@ -26,7 +26,7 @@ class KeyboardManager:
                     self.logger.debug(f"Typing {key}")
             if key is not None:
                 keyboard.press(key)
-                sleep(self.config.get("USER_INPUT_DELAY"))
+                sleep(self.config.get("KEYBOARD_INPUT_DELAY"))
                 keyboard.release(key)
             else:
                 sleep(0.01)
