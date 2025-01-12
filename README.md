@@ -8,9 +8,9 @@
 
 ## Download
 
-To download the executable, download the zip from (insert link).
+To download the executable, download the zip from [Download Link](https://github.com/AllanKoder/Lethal-Terminal/blob/master/download). Keep in mind, this is for **Windows** only.
 
-Or you can use pyinstaller to install the executable yourself.
+You can also use pyinstaller to install the executable yourself.
 
 ## Features
 - Automatically typing all the mines and turrets every 5 seconds (configurable)
