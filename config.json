@@ -1,6 +1,7 @@
 {
     "USER_INPUT_DELAY": 0.010,
     "TRAP_TIMER_DURATION": 5,
+    "LOG_LEVEL": 20,
     "PLAYERS": [
         "player1",
         "player2",

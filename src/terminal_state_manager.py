@@ -22,7 +22,7 @@ class State(Enum):
     PING_RADAR = 8
 
 class TerminalStateManager:
-    def __init__(self, keyboard_manager):
+    def __init__(self, keyboard_manager, logger):
         self.buffer = deque([]) # What the keyboard has typed
         self.to_be_written = deque([]) # What the user is about to write before the interuption by the automated trap system
         self.writing_queue = deque([]) # The things that are to be typed
@@ -49,13 +49,15 @@ class TerminalStateManager:
         # Config
         self.config = ConfigSingleton()
 
-        # Keyboard
+        # Dependencies
         self.keyboard_manager = keyboard_manager
+        self.logger = logger
 
         self.refresh_callback = None
         # The current state
         self.state = State.GAMEPLAY
 
+        self.logger.debug("TerminalStateManager initialized.")
         self.gameplay_state()
     
     def set_refresh_callback(self, callback):
@@ -77,7 +79,7 @@ class TerminalStateManager:
         
         return True
 
-    def handle_keyboard_logic(self):
+    def handle_keyboard_logic(self) -> None:
         match self.state:            
             case State.GAMEPLAY:
                 self.handle_gameplay_keyboard()
@@ -101,7 +103,6 @@ class TerminalStateManager:
     def handle_key_buffer(self, key: str):
         # Add the key to the buffer
         self.buffer.append(key.name)
-
         self.handle_keyboard_logic()
 
         # Flush on enter
@@ -111,32 +112,30 @@ class TerminalStateManager:
         # No need for more than 50 characters in reality
         if len(self.buffer) > 50:
             self.buffer.popleft()
-
+    
     def listen_to_keyboard(self, suppress):
         # If is auto typing, suppress the user input
+        keyboard.unhook_all()
         keyboard.on_press(self.handle_key_buffer, suppress=suppress)
-    # Reduce repeated code for keyboard setup
 
     def handle_control_c(self):
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
 
-    @keyboard_setup
+    @keyboard_setup(False)
     def gameplay_state(self):
         self.state = State.GAMEPLAY
         self.clear_all_buffers() # Stop writing
         self.run_auto_trap_thread = False
 
-        self.listen_to_keyboard(False)
     def handle_gameplay_keyboard(self):
         # Enter Terminal State
         if self.is_typed(['t', 'enter']):
             self.terminal_state()
 
-    @keyboard_setup
+    @keyboard_setup()
     def terminal_state(self):
         self.state = State.TERMINAL
-        self.listen_to_keyboard(True)
         self.clear_to_be_written_buffer() # Clear buffer
         self.run_auto_trap_thread = True
         if not self.is_running_manager:
@@ -193,11 +192,10 @@ class TerminalStateManager:
         self.handle_control_c()
 
 
-    @keyboard_setup
+    @keyboard_setup()
     def add_trap_state(self):
         self.state = State.ADD_TRAP
         self.current_trap.clear()
-        self.listen_to_keyboard(True)
 
     def handle_adding_trap_keyboard(self):
         if len(self.buffer) >= 1 and len(self.buffer[-1]) == 1:
@@ -224,11 +222,10 @@ class TerminalStateManager:
         self.handle_control_c()
 
 
-    @keyboard_setup
+    @keyboard_setup()
     def remove_trap_state(self):
         self.state = State.DELETE_TRAP
         self.current_trap.clear()
-        self.listen_to_keyboard(True)
 
     def handle_delete_trap_keyboard(self):
         if len(self.buffer) >= 1 and len(self.buffer[-1]) == 1:
@@ -261,6 +258,7 @@ class TerminalStateManager:
         # Add the latest event to the to_be_written list
         if len(key_event) == 1 or key_event in ['space', 'backspace']:
             self.to_be_written.append(key_event)
+            self.logger.debug(f"To_be_written buffer is {self.to_be_written}")
         # If the system is not typing traps, handle user input directly
         if not self.is_auto_typing_traps:
             # handle the inputs given
@@ -274,13 +272,15 @@ class TerminalStateManager:
         # System is typing traps
         else:
             if key_event == 'enter':
-                # Send the line that was desired to be typed to the writing queue
-                self.writing_queue.appendleft(deque(self.to_be_written))
-
+                # Update UI Event
                 self.set_event(f"Will type: {self.keyboard_manager.keys_to_string(self.to_be_written)}")
-
                 if self.refresh_callback():
                     self.refresh_callback()
+
+                # Send the line that was desired to be typed to the writing queue
+                self.to_be_written.append('enter')
+                self.writing_queue.appendleft(deque(self.to_be_written))
+
 
                 self.clear_to_be_written_buffer()
         
@@ -290,10 +290,9 @@ class TerminalStateManager:
             if len(self.to_be_written) > 0:
                 self.to_be_written.pop()
         
-    @keyboard_setup
+    @keyboard_setup()
     def insert_text_state(self):
         self.state = State.INSERT_TEXT
-        self.listen_to_keyboard(True)
     def handle_insert_text_keyboard(self):
         if self.is_typed(['ctrl', 'c']):
             self.terminal_state()
@@ -303,10 +302,9 @@ class TerminalStateManager:
             event = self.buffer[-1]
             self.insert_event_to_be_written(event)
 
-    @keyboard_setup
+    @keyboard_setup()
     def switch_user_state(self):        
         self.state = State.SWITCH_USER
-        self.listen_to_keyboard(True)
     def handle_switch_user_keyboard(self):
         # Switch
         if self.is_typed(['s']):
@@ -336,14 +334,12 @@ class TerminalStateManager:
 
         self.handle_control_c()
 
-    @keyboard_setup
+    @keyboard_setup()
     def switch_flash_state(self):        
         self.state = State.FLASH_RADAR
-        self.listen_to_keyboard(True)
-    @keyboard_setup
+    @keyboard_setup()
     def switch_ping_state(self):        
         self.state = State.PING_RADAR
-        self.listen_to_keyboard(True)
     def handle_radar_command(self, command: str):
         if len(self.buffer) >= 1:
             number = self.buffer[-1]
@@ -374,14 +370,13 @@ class TerminalStateManager:
         for k in ['enter','v','i','e','w','space','m','o','n','i','t','o','r','enter']:
             self.insert_event_to_be_written(k)
 
-    @keyboard_setup
+    @keyboard_setup()
     def transmit_text_state(self):
         self.to_be_written.clear()
         for k in ['enter','t','r','a','n','s','m','i','t','space']:
             self.insert_event_to_be_written(k)
         
         self.state = State.TRANSMIT_TEXT
-        self.listen_to_keyboard(True)
 
     def handle_suffix_text_enter_keyboard(self):
         if self.is_typed(['ctrl', 'c']):
@@ -402,6 +397,7 @@ class TerminalStateManager:
     # Thread to handle writing the trap
     def start_automatic_trap_writing(self):
         self.is_auto_typing_traps = True
+        self.logger.debug("Started automatic trap writing")
 
         trap_list = self.traps
         if self.want_all_traps:
@@ -432,6 +428,7 @@ class TerminalStateManager:
             except:
                 sleep(0.01)
 
+        self.logger.debug("Ended automatic trap writing")
         self.is_auto_typing_traps = False
     
 
@@ -440,10 +437,10 @@ class TerminalStateManager:
         self.writing_queue.clear()
 
     def automatic_trap_writing_manager(self):
+        self.is_running_manager = True
         ideal_timer = self.config.get("TRAP_TIMER_DURATION")
 
         initial_call = True
-        self.is_running_manager = True
         while self.run_auto_trap_thread:
             if self.state is not State.GAMEPLAY:
                 self.start_time = time()

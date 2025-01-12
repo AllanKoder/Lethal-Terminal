@@ -1,4 +1,5 @@
 from time import sleep
+from typing import Callable
 import keyboard
 import threading
 from collections import deque
@@ -54,11 +55,14 @@ class KeyboardManager:
         return output
 
 # Decorator for keyboard setup
-def keyboard_setup(func):
-    def decorator(self):
-        keyboard.unhook_all()
-        self.buffer.clear()
-        func(self)
-        if self.refresh_callback:
-            self.refresh_callback()
+# Reduce repeated code for keyboard setup
+def keyboard_setup(suppress: bool = True) -> Callable:
+    def decorator(func):
+        def wrapper(self):
+            self.listen_to_keyboard(suppress)
+            self.buffer.clear()
+            func(self)
+            if self.refresh_callback:
+                self.refresh_callback()
+        return wrapper
     return decorator
