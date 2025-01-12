@@ -1,5 +1,4 @@
-
-def is_valid_trap(trap: str):
+def is_valid_trap(trap: str) -> bool:
     if len(trap) != 2:
         return False
     if not trap[0].isalpha():
