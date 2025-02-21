@@ -228,6 +228,13 @@ class TerminalStateManager:
             if is_valid_trap(trap) and trap not in self.traps:
                 self.traps.append(trap)
                 self.set_event(f"Added trap: {trap}")
+
+                # Type the trap inputted
+                self.insert_event_to_be_written('enter')
+                for k in trap:
+                    self.insert_event_to_be_written(k) 
+                self.insert_event_to_be_written('enter')
+
             else:
                 self.set_event(f"Cannot add trap: {trap}", EventType.FAIL)
 
