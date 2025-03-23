@@ -2,6 +2,7 @@
 
 'Lethal Terminal' is an advanced terminal tool for automating disarming mines, turret, and easily performing macros with vim motions.
 
+Let's say that you were watching **player1** over the terminal, but you had to disarm traps for **player2** as well. How can you quickly disarm 5 turrets while keeping track of the other players? Well, this is the overkill tool for the job!
 <p align="center">
   <img src="./assets/lethal_terminal.ico" alt="Lethal Terminal icon" />
 </p>
